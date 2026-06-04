@@ -24,25 +24,33 @@ echo "[Tuxedo-Startup] =========================================="
 echo "[Tuxedo-Startup] Starting Tuxedo with QSPACE"
 echo "[Tuxedo-Startup] =========================================="
 
-# Load Tuxedo configuration
-echo "[Tuxedo-Startup] Loading ubbconfig..."
-tmloadcf -y $APPDIR/ubbconfig
+# Check if tmloadcf exists
+if command -v tmloadcf > /dev/null 2>&1; then
+    # Load Tuxedo configuration
+    echo "[Tuxedo-Startup] Loading ubbconfig..."
+    tmloadcf -y $APPDIR/ubbconfig
 
-# Boot Tuxedo domain
-echo "[Tuxedo-Startup] Booting Tuxedo domain..."
-tmboot -y
+    # Boot Tuxedo domain
+    echo "[Tuxedo-Startup] Booting Tuxedo domain..."
+    tmboot -y
 
-# Check status
-echo "[Tuxedo-Startup] Checking Tuxedo status..."
-tmadmin -r << ADMEOF
+    # Check status
+    echo "[Tuxedo-Startup] Checking Tuxedo status..."
+    tmadmin -r << ADMEOF
 psr
 psc
 q
 ADMEOF
 
-echo "[Tuxedo-Startup] =========================================="
-echo "[Tuxedo-Startup] Tuxedo QSPACE started successfully"
-echo "[Tuxedo-Startup] =========================================="
+    echo "[Tuxedo-Startup] =========================================="
+    echo "[Tuxedo-Startup] Tuxedo QSPACE started successfully"
+    echo "[Tuxedo-Startup] =========================================="
+else
+    echo "[Tuxedo-Startup] WARNING: tmloadcf not found"
+    echo "[Tuxedo-Startup] WARNING: Tuxedo QSPACE will NOT be available"
+    echo "[Tuxedo-Startup] WARNING: Running in fallback mode (REST API only)"
+    echo "[Tuxedo-Startup] =========================================="
+fi
 
 # Start REST API server in foreground
 echo "[Tuxedo-Startup] Starting REST API server on port 8080..."
