@@ -54,5 +54,6 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:8080/ || exit 1
 
-# Entry point: run mock server
+# Override base image ENTRYPOINT and run mock server
+ENTRYPOINT []
 CMD ["/u01/oracle/user_projects/tuxdemo/msgsvc-mock.sh"]

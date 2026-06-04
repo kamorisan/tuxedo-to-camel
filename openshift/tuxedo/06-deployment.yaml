@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: tuxedo
-          image: tuxedo-msgsvc:latest
+          image: image-registry.openshift-image-registry.svc:5000/demo-tuxedo/tuxedo-msgsvc:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
