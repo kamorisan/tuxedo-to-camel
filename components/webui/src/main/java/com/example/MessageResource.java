@@ -28,13 +28,13 @@ public class MessageResource {
 
         try {
             // Send message to Tuxedo
-            TuxedoClient.TuxedoResponse tuxedoResponse = tuxedoClient.sendMessage(message);
-            LOG.infof("[WebUI] Tuxedo response: %s", tuxedoResponse.message);
+            String tuxedoResponse = tuxedoClient.sendMessage(message);
+            LOG.infof("[WebUI] Tuxedo response: %s", tuxedoResponse);
 
             return Response.ok(Map.of(
                 "status", "success",
                 "message", "Message sent to Tuxedo successfully",
-                "tuxedoResponse", tuxedoResponse.message,
+                "tuxedoResponse", tuxedoResponse,
                 "timestamp", Instant.now().toString()
             )).build();
 

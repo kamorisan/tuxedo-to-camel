@@ -14,10 +14,5 @@ public interface TuxedoClient {
     @POST
     @Consumes(MediaType.TEXT_PLAIN)
     @Produces(MediaType.APPLICATION_JSON)
-    TuxedoResponse sendMessage(String message);
-
-    class TuxedoResponse {
-        public String status;
-        public String message;
-    }
+    String sendMessage(String message);
 }
