@@ -14,8 +14,9 @@ LABEL description="Tuxedo Message Service with AMQ integration"
 
 USER root
 
-# Install qpid-proton C library and development headers
-RUN yum -y install qpid-proton-c qpid-proton-c-devel && \
+# Enable EPEL and install qpid-proton C library
+RUN yum -y install oracle-epel-release-el8 && \
+    yum -y install qpid-proton-c qpid-proton-c-devel gcc make && \
     yum clean all && \
     rm -rf /var/cache/yum
 
