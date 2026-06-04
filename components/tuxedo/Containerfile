@@ -14,6 +14,10 @@ LABEL description="Tuxedo Message Service with AMQ integration"
 
 USER root
 
+# Install EPEL repository for qpid-proton
+RUN yum -y install oracle-epel-release-el8 && \
+    yum clean all
+
 # Install Python, curl, and qpid-proton for mock server with AMQP support
 RUN yum -y install python3 curl python3-qpid-proton && \
     yum clean all && \
