@@ -44,9 +44,8 @@ public class MessageRoute extends RouteBuilder {
             })
             .choice()
                 .when(header("hasMessage").isEqualTo(true))
-                    .log("[Camel] Dequeued: ${body[message]}")
                     .marshal().json(JsonLibrary.Jackson)
-                    .log("[Camel] Transformed: ${body}")
+                    .log("[Camel] Sending to Kafka: ${body}")
                     .to("kafka:demo-messages?brokers={{kafka.brokers}}")
                     .log("[Camel] Sent to Kafka topic: demo-messages")
             .end();
