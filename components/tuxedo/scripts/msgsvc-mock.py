@@ -36,10 +36,10 @@ def init_amqp():
         return False
 
     try:
-        url = f'{AMQ_HOST}:{AMQ_PORT}'
+        url = f'amqp://{AMQ_HOST}:{AMQ_PORT}'
         print(f'[Tuxedo-Mock] Connecting to AMQP broker at {url}...', flush=True)
 
-        amqp_connection = BlockingConnection(url, timeout=10)
+        amqp_connection = BlockingConnection(url, timeout=10, allowed_mechs='ANONYMOUS')
         amqp_sender = amqp_connection.create_sender(AMQ_QUEUE)
 
         print(f'[Tuxedo-Mock] AMQP connection established to {url}', flush=True)
