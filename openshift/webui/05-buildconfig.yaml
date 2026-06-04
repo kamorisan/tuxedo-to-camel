@@ -1,0 +1,44 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: webui
+  namespace: demo-webui
+  labels:
+    app: webui
+    app.kubernetes.io/name: webui
+    app.kubernetes.io/component: frontend
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: webui:latest
+  source:
+    type: Git
+    git:
+      uri: 'https://github.com/kamorisan/tuxedo-to-camel.git'
+      ref: feature/implementation
+    contextDir: components/webui
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        name: 'ubi8-openjdk-21:1.18'
+        namespace: openshift
+  triggers:
+    - type: ConfigChange
+    - type: ImageChange
+      imageChange: {}
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: webui
+  namespace: demo-webui
+  labels:
+    app: webui
+    app.kubernetes.io/name: webui
+    app.kubernetes.io/component: frontend
+spec:
+  lookupPolicy:
+    local: true

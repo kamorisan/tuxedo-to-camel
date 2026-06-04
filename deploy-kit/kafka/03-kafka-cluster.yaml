@@ -1,0 +1,41 @@
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: KAFKA_CLUSTER_NAME
+  namespace: NAMESPACE_PLACEHOLDER
+spec:
+  kafka:
+    version: 4.1.0
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: KAFKA_CLUSTER_NAME-pool
+  namespace: NAMESPACE_PLACEHOLDER
+  labels:
+    strimzi.io/cluster: KAFKA_CLUSTER_NAME
+spec:
+  replicas: 1
+  roles:
+    - broker
+    - controller
+  storage:
+    type: ephemeral

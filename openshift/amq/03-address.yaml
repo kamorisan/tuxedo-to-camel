@@ -1,0 +1,9 @@
+apiVersion: broker.amq.io/v1beta1
+kind: ActiveMQArtemisAddress
+metadata:
+  name: tuxedo-out-address
+  namespace: demo-amq
+spec:
+  addressName: TUXEDO.OUT
+  queueName: TUXEDO.OUT
+  routingType: anycast

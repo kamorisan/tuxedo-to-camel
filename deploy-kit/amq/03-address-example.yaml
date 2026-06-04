@@ -1,0 +1,9 @@
+apiVersion: broker.amq.io/v1beta1
+kind: ActiveMQArtemisAddress
+metadata:
+  name: example-queue-address
+  namespace: NAMESPACE_PLACEHOLDER
+spec:
+  addressName: EXAMPLE.QUEUE
+  queueName: EXAMPLE.QUEUE
+  routingType: anycast

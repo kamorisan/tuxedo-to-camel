@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: camel-kafka-bridge
+  namespace: demo-camel
+  labels:
+    app: camel-kafka-bridge
+    app.kubernetes.io/component: camel
+    app.kubernetes.io/part-of: tuxedo-to-camel-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: camel-kafka-bridge
+  template:
+    metadata:
+      labels:
+        app: camel-kafka-bridge
+        app.kubernetes.io/component: camel
+    spec:
+      containers:
+        - name: camel
+          image: image-registry.openshift-image-registry.svc:5000/demo-camel/camel-kafka-bridge:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+              name: http
+          env:
+            - name: QUARKUS_QPID_JMS_URL
+              value: "amqp://amq-broker-hdls-svc.demo-amq.svc.cluster.local:5672"
+            - name: KAFKA_BROKERS
+              value: "demo-kafka-kafka-bootstrap.demo-kafka.svc.cluster.local:9092"
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+            requests:
+              memory: "256Mi"
+              cpu: "250m"

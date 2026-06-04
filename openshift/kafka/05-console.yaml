@@ -1,0 +1,17 @@
+apiVersion: console.streamshub.github.com/v1alpha1
+kind: Console
+metadata:
+  name: demo-kafka-console
+  namespace: demo-kafka
+spec:
+  hostname: kafka-console.apps.cluster-4sgmc.4sgmc.sandbox356.opentlc.com
+  kafkaClusters:
+    - name: demo-kafka
+      namespace: demo-kafka
+      listener: plain
+      properties:
+        values: []
+        valuesFrom: []
+  metricsSources:
+    - name: embedded-metrics
+      type: embedded

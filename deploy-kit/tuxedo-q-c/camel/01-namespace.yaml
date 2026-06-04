@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo-camel
+  labels:
+    app.kubernetes.io/name: demo-camel
+    app.kubernetes.io/part-of: tuxedo-to-camel-demo

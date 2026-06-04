@@ -1,0 +1,25 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: tuxedo-base
+  namespace: NAMESPACE_PLACEHOLDER
+  labels:
+    app: tuxedo-base
+    app.kubernetes.io/component: tuxedo
+    app.kubernetes.io/part-of: tuxedo-to-camel-demo
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: 'tuxedo-base:22.1.1.0.0'
+  source:
+    type: Git
+    git:
+      uri: 'GIT_REPO_PLACEHOLDER'
+      ref: GIT_BRANCH_PLACEHOLDER
+    contextDir: components/tuxedo-base-sdk
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile.standalone
+  triggers: []

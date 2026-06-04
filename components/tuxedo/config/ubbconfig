@@ -1,0 +1,37 @@
+#
+# Tuxedo UBB Configuration for Demo
+# Queue Space (QSPACE) for message queuing
+#
+
+*RESOURCES
+IPCKEY          123456
+DOMAINID        tuxdemo
+MASTER          simpapp
+MAXACCESSERS    50
+MAXSERVERS      20
+MAXSERVICES     30
+MODEL           SHM
+LDBAL           N
+
+*MACHINES
+"tuxedo-msgsvc" LMID=simpapp
+                APPDIR="/u01/oracle/user_projects/tuxdemo"
+                TUXCONFIG="/u01/oracle/user_projects/tuxdemo/tuxconfig"
+                TUXDIR="/u01/oracle/tuxHome/tuxedo22.1.1.0.0"
+
+*GROUPS
+GROUP1          LMID=simpapp GRPNO=1
+
+*SERVERS
+# Queue Space Server
+TMQUEUE         SRVGRP=GROUP1 SRVID=1
+                MIN=1 MAX=1 RESTART=Y GRACE=0
+                CLOPT="-s QSPACE:DEMO_QUEUE --"
+
+*SERVICES
+# Queue Space Service
+QSPACE
+
+*QUEUES
+# Demo Queue for Tuxedo to Camel messaging
+DEMO_QUEUE

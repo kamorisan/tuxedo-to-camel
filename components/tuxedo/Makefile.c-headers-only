@@ -1,0 +1,90 @@
+# Makefile for Tuxedo /Q C Implementation (Headers-only build)
+# Compiles with SDK headers, stubs Tuxedo library functions
+
+CC = gcc
+TUXDIR = /u01/oracle/tuxHome/tuxedo22.1.1.0.0
+CFLAGS = -I$(TUXDIR)/include -Wall -O2 -DTUXEDO_STUB
+LDFLAGS = -lmicrohttpd -lpthread
+
+TARGET = tuxedo_q_server
+SRC = src/tuxedo_q_server.c
+STUB_SRC = src/tuxedo_stub.c
+OBJ = $(SRC:.c=.o) $(STUB_SRC:.c=.o)
+
+.PHONY: all clean stub
+
+all: stub $(TARGET)
+
+stub:
+	@echo "Creating Tuxedo stub functions..."
+	@mkdir -p src
+	@echo '/* Tuxedo API stub functions for testing without libtux.so */' > $(STUB_SRC)
+	@echo '#include <stdio.h>' >> $(STUB_SRC)
+	@echo '#include <stdlib.h>' >> $(STUB_SRC)
+	@echo '#include <string.h>' >> $(STUB_SRC)
+	@echo '' >> $(STUB_SRC)
+	@echo '/* Global error variables */' >> $(STUB_SRC)
+	@echo 'int tperrno = 0;' >> $(STUB_SRC)
+	@echo 'long tpurcode = 0;' >> $(STUB_SRC)
+	@echo '' >> $(STUB_SRC)
+	@echo '/* Internal Tuxedo function - return address of tperrno */' >> $(STUB_SRC)
+	@echo 'int *_tmget_tperrno_addr(void) {' >> $(STUB_SRC)
+	@echo '    return &tperrno;' >> $(STUB_SRC)
+	@echo '}' >> $(STUB_SRC)
+	@echo '' >> $(STUB_SRC)
+	@echo 'typedef struct { long flags; } TPINIT;' >> $(STUB_SRC)
+	@echo '' >> $(STUB_SRC)
+	@echo '/* tpinit - Initialize ATMI */' >> $(STUB_SRC)
+	@echo 'int tpinit(TPINIT *tpinfo) {' >> $(STUB_SRC)
+	@echo '    fprintf(stderr, "[STUB] tpinit\\n");' >> $(STUB_SRC)
+	@echo '    return 0;' >> $(STUB_SRC)
+	@echo '}' >> $(STUB_SRC)
+	@echo '' >> $(STUB_SRC)
+	@echo '/* tpterm - Terminate ATMI */' >> $(STUB_SRC)
+	@echo 'int tpterm(void) {' >> $(STUB_SRC)
+	@echo '    fprintf(stderr, "[STUB] tpterm\\n");' >> $(STUB_SRC)
+	@echo '    return 0;' >> $(STUB_SRC)
+	@echo '}' >> $(STUB_SRC)
+	@echo '' >> $(STUB_SRC)
+	@echo '/* tpalloc - Allocate typed buffer */' >> $(STUB_SRC)
+	@echo 'char *tpalloc(char *type, char *subtype, long size) {' >> $(STUB_SRC)
+	@echo '    return malloc(size);' >> $(STUB_SRC)
+	@echo '}' >> $(STUB_SRC)
+	@echo '' >> $(STUB_SRC)
+	@echo '/* tpfree - Free typed buffer */' >> $(STUB_SRC)
+	@echo 'void tpfree(char *ptr) {' >> $(STUB_SRC)
+	@echo '    free(ptr);' >> $(STUB_SRC)
+	@echo '}' >> $(STUB_SRC)
+	@echo '' >> $(STUB_SRC)
+	@echo '/* tpenqueue - Stub (always fails) */' >> $(STUB_SRC)
+	@echo 'int tpenqueue(char *qspace, char *qname, void *ctl, char *data, long len, long flags) {' >> $(STUB_SRC)
+	@echo '    tperrno = 2;  /* TPENOENT */' >> $(STUB_SRC)
+	@echo '    return -1;' >> $(STUB_SRC)
+	@echo '}' >> $(STUB_SRC)
+	@echo '' >> $(STUB_SRC)
+	@echo '/* tpdequeue - Stub (always fails) */' >> $(STUB_SRC)
+	@echo 'int tpdequeue(char *qspace, char *qname, void *ctl, char **data, long *len, long flags) {' >> $(STUB_SRC)
+	@echo '    tperrno = 2;  /* TPENOENT */' >> $(STUB_SRC)
+	@echo '    return -1;' >> $(STUB_SRC)
+	@echo '}' >> $(STUB_SRC)
+
+$(TARGET): $(OBJ)
+	$(CC) -o $@ $^ $(LDFLAGS)
+	@echo "Build complete: $(TARGET) (with Tuxedo stubs)"
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -f $(TARGET) $(OBJ) $(STUB_SRC)
+	@echo "Clean complete"
+
+test:
+	@echo "Testing $(TARGET)..."
+	@./$(TARGET) &
+	@sleep 2
+	@curl -X POST http://localhost:8080/enqueue -d "Test message" || true
+	@curl http://localhost:8080/dequeue || true
+	@curl http://localhost:8080/health || true
+	@pkill -f $(TARGET) || true
+	@echo "Test complete"

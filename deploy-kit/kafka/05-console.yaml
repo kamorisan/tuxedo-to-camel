@@ -1,0 +1,17 @@
+apiVersion: console.streamshub.github.com/v1alpha1
+kind: Console
+metadata:
+  name: KAFKA_CLUSTER_NAME-console
+  namespace: NAMESPACE_PLACEHOLDER
+spec:
+  hostname: CONSOLE_HOSTNAME_PLACEHOLDER
+  kafkaClusters:
+    - name: KAFKA_CLUSTER_NAME
+      namespace: NAMESPACE_PLACEHOLDER
+      listener: plain
+      properties:
+        values: []
+        valuesFrom: []
+  metricsSources:
+    - name: embedded-metrics
+      type: embedded

@@ -1,0 +1,12 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: tuxedo-msgsvc
+  namespace: NAMESPACE_PLACEHOLDER
+  labels:
+    app: tuxedo-msgsvc
+    app.kubernetes.io/component: tuxedo
+    app.kubernetes.io/part-of: tuxedo-to-camel-demo
+spec:
+  lookupPolicy:
+    local: false

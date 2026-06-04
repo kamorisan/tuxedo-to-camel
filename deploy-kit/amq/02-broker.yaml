@@ -1,0 +1,28 @@
+apiVersion: broker.amq.io/v1beta1
+kind: ActiveMQArtemis
+metadata:
+  name: amq-broker
+  namespace: NAMESPACE_PLACEHOLDER
+spec:
+  deploymentPlan:
+    size: 1
+    image: registry.redhat.io/amq7/amq-broker-rhel8:7.11
+    requireLogin: false
+    persistenceEnabled: false
+    messageMigration: false
+
+  acceptors:
+    - name: amqp
+      protocols: amqp
+      port: 5672
+      sslEnabled: false
+    - name: core
+      protocols: core
+      port: 61616
+      sslEnabled: false
+
+  console:
+    expose: true
+    sslEnabled: false
+
+  version: 7.11.0

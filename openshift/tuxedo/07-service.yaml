@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tuxedo-msgsvc
+  namespace: demo-tuxedo
+  labels:
+    app: tuxedo-msgsvc
+    app.kubernetes.io/component: tuxedo
+    app.kubernetes.io/part-of: tuxedo-to-camel-demo
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: wsl
+  selector:
+    app: tuxedo-msgsvc
+  type: ClusterIP

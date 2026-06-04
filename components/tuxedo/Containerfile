@@ -1,0 +1,65 @@
+# Copyright (c) 2024 Tuxedo to Camel Demo
+# Tuxedo Message Service Container Image
+#
+# This Containerfile extends Oracle Tuxedo 22.1.1.0.0 with:
+# - Custom MSGSVC service (message forwarding to AMQ)
+# - qpid-proton C library for AMQP support
+# - Boot scripts for automated startup
+
+# Base image: Oracle Tuxedo 22.1.1.0.0
+FROM oracle/tuxedo:22.1.1.0.0
+
+LABEL maintainer="tuxedo-to-camel-demo"
+LABEL description="Tuxedo Message Service with AMQ integration"
+
+USER root
+
+# Install EPEL repository for qpid-proton
+RUN yum -y install oracle-epel-release-el8 && \
+    yum clean all
+
+# Install Python, curl, and qpid-proton for mock server with AMQP support
+RUN yum -y install python3 curl python3-qpid-proton && \
+    yum clean all && \
+    rm -rf /var/cache/yum
+
+# Create application directory as root
+RUN mkdir -p /u01/oracle/user_projects/tuxdemo && \
+    chown -R oracle:oracle /u01/oracle/user_projects
+
+# Switch to oracle user
+USER oracle
+
+# Set environment variables
+ENV TUXDIR=/u01/oracle/tuxHome/tuxedo22.1.1.0.0
+ENV APPDIR=/u01/oracle/user_projects/tuxdemo
+ENV PATH=$PATH:$TUXDIR/bin
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$TUXDIR/lib
+ENV TUXCONFIG=$APPDIR/tuxconfig
+
+# AMQ configuration (can be overridden at runtime)
+ENV AMQ_HOST=amq-broker.demo-tuxedo.svc.cluster.local
+ENV AMQ_PORT=5672
+ENV AMQ_QUEUE=TUXEDO.OUT
+
+# Copy Tuxedo configuration and scripts
+COPY --chown=oracle:oracle config/ubbconfig $APPDIR/
+COPY --chown=oracle:oracle scripts/msgsvc-mock.py scripts/start-mock.sh scripts/start-tuxedo-q.sh scripts/tuxedo-q-server.py scripts/start-tuxedo-with-q.sh $APPDIR/
+COPY --chown=oracle:oracle python/ $APPDIR/python/
+
+# Set working directory
+WORKDIR $APPDIR
+
+# Make scripts executable
+RUN chmod +x $APPDIR/msgsvc-mock.py $APPDIR/start-mock.sh $APPDIR/start-tuxedo-q.sh $APPDIR/tuxedo-q-server.py $APPDIR/start-tuxedo-with-q.sh
+
+# Expose WSL port (HTTP receiver)
+EXPOSE 8080
+
+# Health check (simple TCP check for mock server)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:8080/ || exit 1
+
+# Override base image ENTRYPOINT and run mock server
+ENTRYPOINT []
+CMD ["/u01/oracle/user_projects/tuxdemo/start-mock.sh"]
