@@ -14,10 +14,8 @@ LABEL description="Tuxedo /Q Message Service (C implementation)"
 
 USER root
 
-# Install development tools and libmicrohttpd
-RUN yum -y install gcc make libmicrohttpd-devel && \
-    yum clean all && \
-    rm -rf /var/cache/yum
+# Note: gcc, make, and libmicrohttpd already installed in base image
+# No additional packages needed
 
 # Create application directory as root
 RUN mkdir -p /u01/oracle/user_projects/tuxdemo && \
@@ -36,14 +34,14 @@ ENV TUXCONFIG=$APPDIR/tuxconfig
 # Copy Tuxedo configuration and C source
 COPY --chown=oracle:oracle config/ubbconfig $APPDIR/
 COPY --chown=oracle:oracle src/tuxedo_q_server.c $APPDIR/src/
-COPY --chown=oracle:oracle Makefile.c $APPDIR/Makefile
+COPY --chown=oracle:oracle Makefile.c-headers-only $APPDIR/Makefile
 COPY --chown=oracle:oracle scripts/start-tuxedo-q-c.sh $APPDIR/
 
 # Set working directory
 WORKDIR $APPDIR
 
-# Build C implementation
-RUN make -f Makefile || echo "Build may fail without Tuxedo SDK headers"
+# Build C implementation with stub functions
+RUN make stub && make || echo "Build may fail without Tuxedo SDK headers"
 
 # Make scripts executable
 RUN chmod +x $APPDIR/start-tuxedo-q-c.sh
