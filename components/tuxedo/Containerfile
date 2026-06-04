@@ -1,0 +1,73 @@
+# Copyright (c) 2024 Tuxedo to Camel Demo
+# Tuxedo Message Service Container Image
+#
+# This Containerfile extends Oracle Tuxedo 22.1.1.0.0 with:
+# - Custom MSGSVC service (message forwarding to AMQ)
+# - qpid-proton C library for AMQP support
+# - Boot scripts for automated startup
+
+# Base image: Oracle Tuxedo 22.1.1.0.0
+FROM oracle/tuxedo:22.1.1.0.0
+
+LABEL maintainer="tuxedo-to-camel-demo"
+LABEL description="Tuxedo Message Service with AMQ integration"
+
+USER root
+
+# Install qpid-proton C library and development headers
+RUN yum -y install qpid-proton-c qpid-proton-c-devel && \
+    yum clean all && \
+    rm -rf /var/cache/yum
+
+# Switch to oracle user
+USER oracle
+
+# Set environment variables
+ENV TUXDIR=/u01/oracle/tuxHome/tuxedo22.1.1.0.0
+ENV APPDIR=/u01/oracle/user_projects/tuxdemo
+ENV PATH=$PATH:$TUXDIR/bin
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$TUXDIR/lib
+ENV TUXCONFIG=$APPDIR/tuxconfig
+
+# AMQ configuration (can be overridden at runtime)
+ENV AMQ_HOST=amq-broker.demo-tuxedo.svc.cluster.local
+ENV AMQ_PORT=5672
+ENV AMQ_QUEUE=TUXEDO.OUT
+
+# Create application directory
+RUN mkdir -p $APPDIR
+
+# Copy source files
+COPY --chown=oracle:oracle src/*.c src/*.h $APPDIR/src/
+COPY --chown=oracle:oracle Makefile $APPDIR/
+COPY --chown=oracle:oracle config/ubbconfig $APPDIR/
+COPY --chown=oracle:oracle scripts/*.sh $APPDIR/
+
+# Set working directory
+WORKDIR $APPDIR
+
+# Build the Tuxedo service
+RUN cd $APPDIR && \
+    buildserver -v -o MSGSVC \
+                -f "src/MSGSVC.c src/amqclient.c" \
+                -l "-lqpid-proton"
+
+# Make scripts executable
+RUN chmod +x $APPDIR/*.sh
+
+# Expose WSL port (HTTP receiver)
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD tmadmin -r << EOF | grep -q "Master" || exit 1
+psr
+quit
+EOF
+
+# Entry point script
+COPY --chown=oracle:oracle scripts/entrypoint.sh /u01/oracle/
+RUN chmod +x /u01/oracle/entrypoint.sh
+
+ENTRYPOINT ["/u01/oracle/entrypoint.sh"]
+CMD ["run"]
