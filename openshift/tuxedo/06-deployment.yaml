@@ -22,6 +22,7 @@ spec:
         - name: tuxedo
           image: image-registry.openshift-image-registry.svc:5000/demo-tuxedo/tuxedo-msgsvc:latest
           imagePullPolicy: Always
+          command: ["/u01/oracle/user_projects/tuxdemo/start-mock.sh"]
           ports:
             - containerPort: 8080
               protocol: TCP
