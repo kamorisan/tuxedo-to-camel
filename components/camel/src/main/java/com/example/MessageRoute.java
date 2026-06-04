@@ -19,7 +19,6 @@ public class MessageRoute extends RouteBuilder {
             .routeId("tuxedoq-to-kafka")
             .setHeader("CamelHttpMethod", constant("GET"))
             .to("http://tuxedo-msgsvc.demo-tuxedo.svc.cluster.local:8080/dequeue?bridgeEndpoint=true&throwExceptionOnFailure=false")
-            .log("[Camel] Dequeue response: ${body}")
             // Parse JSON response
             .unmarshal().json(JsonLibrary.Jackson, Map.class)
             .process(exchange -> {
@@ -45,12 +44,11 @@ public class MessageRoute extends RouteBuilder {
             })
             .choice()
                 .when(header("hasMessage").isEqualTo(true))
+                    .log("[Camel] Dequeued: ${body[message]}")
                     .marshal().json(JsonLibrary.Jackson)
                     .log("[Camel] Transformed: ${body}")
                     .to("kafka:demo-messages?brokers={{kafka.brokers}}")
                     .log("[Camel] Sent to Kafka topic: demo-messages")
-                .otherwise()
-                    .log("[Camel] No message in queue, skipping")
             .end();
     }
 }
