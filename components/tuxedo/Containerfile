@@ -49,12 +49,13 @@ COPY --chown=oracle:oracle scripts/*.sh $APPDIR/
 # Set working directory
 WORKDIR $APPDIR
 
-# Build the Tuxedo service
+# Build the Tuxedo service (direct gcc instead of buildserver)
 RUN cd $APPDIR && \
-    export CC=/usr/bin/gcc && \
-    buildserver -v -o MSGSVC \
-                -f "src/MSGSVC.c src/amqclient.c" \
-                -l "-lqpid-proton"
+    gcc -o MSGSVC \
+        -I$TUXDIR/include \
+        src/MSGSVC.c src/amqclient.c \
+        -L$TUXDIR/lib \
+        -ltux -lbuft -lfml -lfml32 -lengine -ldl -lpthread -ltirpc -lqpid-proton
 
 # Make scripts executable
 RUN chmod +x $APPDIR/*.sh
