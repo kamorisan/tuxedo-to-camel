@@ -1,0 +1,22 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: tuxedo-base
+  namespace: demo-tuxedo
+  labels:
+    app: tuxedo-base
+    app.kubernetes.io/component: tuxedo
+    app.kubernetes.io/part-of: tuxedo-to-camel-demo
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: 'tuxedo-base:22.1.1.0.0'
+  source:
+    type: Binary
+    binary: {}
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile.ubi
+  triggers: []
