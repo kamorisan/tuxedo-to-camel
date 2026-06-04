@@ -1,8 +1,10 @@
 package com.example;
 
+import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
 
 import java.time.Instant;
@@ -14,6 +16,10 @@ public class MessageResource {
 
     private static final Logger LOG = Logger.getLogger(MessageResource.class);
 
+    @Inject
+    @RestClient
+    TuxedoClient tuxedoClient;
+
     @POST
     @Path("/send")
     @Consumes(MediaType.TEXT_PLAIN)
@@ -21,18 +27,19 @@ public class MessageResource {
         LOG.infof("[WebUI] Received: %s", message);
 
         try {
-            // TODO: TuxedoClientを使ってメッセージ送信
-            // 現時点ではログ出力のみ（Tuxedoサービスができたら実装）
-            LOG.infof("[WebUI] Sent to Tuxedo: %s", message);
+            // Send message to Tuxedo
+            TuxedoClient.TuxedoResponse tuxedoResponse = tuxedoClient.sendMessage(message);
+            LOG.infof("[WebUI] Tuxedo response: %s", tuxedoResponse.message);
 
             return Response.ok(Map.of(
                 "status", "success",
-                "message", "Message sent to Tuxedo",
+                "message", "Message sent to Tuxedo successfully",
+                "tuxedoResponse", tuxedoResponse.message,
                 "timestamp", Instant.now().toString()
             )).build();
 
         } catch (Exception e) {
-            LOG.errorf(e, "[WebUI] Failed to send message: %s", message);
+            LOG.errorf(e, "[WebUI] Failed to send message to Tuxedo: %s", message);
 
             return Response.serverError().entity(Map.of(
                 "status", "error",
