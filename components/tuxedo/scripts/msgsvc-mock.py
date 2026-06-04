@@ -8,14 +8,12 @@ import http.server
 import socketserver
 import os
 import sys
-import threading
 from datetime import datetime
 
 # Try to import proton for AMQP support
 try:
     from proton import Message
-    from proton.reactor import Container
-    from proton.handlers import MessagingHandler
+    from proton.utils import BlockingSender, BlockingConnection
     AMQP_AVAILABLE = True
 except ImportError:
     AMQP_AVAILABLE = False
@@ -26,55 +24,53 @@ AMQ_HOST = os.getenv('AMQ_HOST', 'amq-broker-hdls-svc.demo-amq.svc.cluster.local
 AMQ_PORT = os.getenv('AMQ_PORT', '5672')
 AMQ_QUEUE = os.getenv('AMQ_QUEUE', 'TUXEDO.OUT')
 
-class AMQPSender(MessagingHandler):
-    """AMQP message sender using proton reactor pattern"""
-    def __init__(self, url, queue):
-        super(AMQPSender, self).__init__()
-        self.url = url
-        self.queue = queue
-        self.sender = None
-        self.container = None
-        self.pending_messages = []
-        self.lock = threading.Lock()
-
-    def on_start(self, event):
-        """Called when the reactor starts"""
-        conn = event.container.connect(self.url)
-        self.sender = event.container.create_sender(conn, self.queue)
-        print(f'[Tuxedo-Mock] AMQP connection established to {self.url}', flush=True)
-
-    def on_sendable(self, event):
-        """Called when the sender is ready to send messages"""
-        with self.lock:
-            while self.pending_messages and event.sender.credit:
-                message_body = self.pending_messages.pop(0)
-                msg = Message(body=message_body)
-                event.sender.send(msg)
-                print(f'[Tuxedo-Mock] Sent to AMQ: {message_body}', flush=True)
-
-    def queue_message(self, message_body):
-        """Queue a message for sending"""
-        with self.lock:
-            self.pending_messages.append(message_body)
-        # Wake up the reactor to process the message
-        if self.container:
-            self.container.wakeup()
-
-    def on_accepted(self, event):
-        """Called when a message is accepted by the broker"""
-        print(f'[Tuxedo-Mock] Message accepted by AMQ broker', flush=True)
-
-    def on_rejected(self, event):
-        """Called when a message is rejected"""
-        print(f'[Tuxedo-Mock] Message rejected by AMQ broker', flush=True)
-
-    def on_transport_error(self, event):
-        """Called when there's a transport error"""
-        print(f'[Tuxedo-Mock] AMQP transport error: {event.transport.condition}', flush=True)
-
-# Global AMQP sender instance
+# Global AMQP connection and sender
+amqp_connection = None
 amqp_sender = None
-amqp_container = None
+
+def init_amqp():
+    """Initialize AMQP connection and sender"""
+    global amqp_connection, amqp_sender
+
+    if not AMQP_AVAILABLE:
+        return False
+
+    try:
+        url = f'{AMQ_HOST}:{AMQ_PORT}'
+        print(f'[Tuxedo-Mock] Connecting to AMQP broker at {url}...', flush=True)
+
+        amqp_connection = BlockingConnection(url, timeout=10)
+        amqp_sender = amqp_connection.create_sender(AMQ_QUEUE)
+
+        print(f'[Tuxedo-Mock] AMQP connection established to {url}', flush=True)
+        print(f'[Tuxedo-Mock] AMQP sender created for queue: {AMQ_QUEUE}', flush=True)
+        return True
+    except Exception as e:
+        print(f'[Tuxedo-Mock] Failed to initialize AMQP: {e}', flush=True)
+        amqp_connection = None
+        amqp_sender = None
+        return False
+
+def send_to_amq(message_body):
+    """Send a message to AMQ"""
+    global amqp_connection, amqp_sender
+
+    if not amqp_sender:
+        print('[Tuxedo-Mock] AMQP sender not initialized, attempting reconnect...', flush=True)
+        if not init_amqp():
+            return False
+
+    try:
+        msg = Message(body=message_body)
+        amqp_sender.send(msg, timeout=5)
+        print(f'[Tuxedo-Mock] ✓ Sent to AMQ: {message_body[:100]}...', flush=True)
+        return True
+    except Exception as e:
+        print(f'[Tuxedo-Mock] ✗ Failed to send to AMQ: {e}', flush=True)
+        # Try to reconnect
+        amqp_sender = None
+        amqp_connection = None
+        return False
 
 class MockTuxedoHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
@@ -86,12 +82,12 @@ class MockTuxedoHandler(http.server.BaseHTTPRequestHandler):
             print(f'[{timestamp}] [Tuxedo-Mock] Received: {body}', flush=True)
 
             # Forward to AMQ
-            if AMQP_AVAILABLE and amqp_sender:
+            if AMQP_AVAILABLE:
                 try:
-                    amqp_sender.queue_message(body)
-                    status_msg = "forwarded to AMQ"
+                    success = send_to_amq(body)
+                    status_msg = "forwarded to AMQ" if success else "AMQ forward failed"
                 except Exception as e:
-                    print(f'[Tuxedo-Mock] Failed to queue message: {e}', flush=True)
+                    print(f'[Tuxedo-Mock] Exception in send_to_amq: {e}', flush=True)
                     status_msg = "AMQ forward failed"
             else:
                 status_msg = "logged (AMQ forwarding disabled)"
@@ -103,7 +99,9 @@ class MockTuxedoHandler(http.server.BaseHTTPRequestHandler):
             response = f'{{"status":"success","message":"Message received and {status_msg}"}}'
             self.wfile.write(response.encode('utf-8'))
         except Exception as e:
-            print(f'[Tuxedo-Mock] Error: {e}', flush=True)
+            print(f'[Tuxedo-Mock] Error in do_POST: {e}', flush=True)
+            import traceback
+            traceback.print_exc()
             self.send_response(500)
             self.end_headers()
 
@@ -113,7 +111,8 @@ class MockTuxedoHandler(http.server.BaseHTTPRequestHandler):
         self.send_header('Content-type', 'text/plain')
         self.end_headers()
         amqp_status = "enabled" if AMQP_AVAILABLE else "disabled"
-        self.wfile.write(f'Tuxedo Mock Server OK (AMQP: {amqp_status})'.encode('utf-8'))
+        connection_status = "connected" if amqp_sender else "disconnected"
+        self.wfile.write(f'Tuxedo Mock Server OK (AMQP: {amqp_status}, Connection: {connection_status})'.encode('utf-8'))
 
     def log_message(self, format, *args):
         pass  # Suppress default logging
@@ -126,24 +125,9 @@ if __name__ == '__main__':
     print(f'[Tuxedo-Mock] AMQ_QUEUE: {AMQ_QUEUE}', flush=True)
     print(f'[Tuxedo-Mock] AMQP Support: {"Available" if AMQP_AVAILABLE else "Not Available"}', flush=True)
 
-    # Initialize AMQP sender if available
+    # Initialize AMQP connection
     if AMQP_AVAILABLE:
-        amqp_url = f'{AMQ_HOST}:{AMQ_PORT}'
-        amqp_sender = AMQPSender(amqp_url, AMQ_QUEUE)
-
-        # Start AMQP container in a separate thread
-        def run_amqp():
-            global amqp_container
-            amqp_container = Container(amqp_sender)
-            amqp_sender.container = amqp_container
-            try:
-                amqp_container.run()
-            except Exception as e:
-                print(f'[Tuxedo-Mock] AMQP container error: {e}', flush=True)
-
-        amqp_thread = threading.Thread(target=run_amqp, daemon=True)
-        amqp_thread.start()
-        print('[Tuxedo-Mock] AMQP container started in background', flush=True)
+        init_amqp()
 
     try:
         with socketserver.TCPServer(('', PORT), MockTuxedoHandler) as httpd:
@@ -151,7 +135,11 @@ if __name__ == '__main__':
             httpd.serve_forever()
     except KeyboardInterrupt:
         print('[Tuxedo-Mock] Shutting down', flush=True)
+        if amqp_connection:
+            amqp_connection.close()
         sys.exit(0)
     except Exception as e:
         print(f'[Tuxedo-Mock] Fatal error: {e}', flush=True)
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
