@@ -38,14 +38,14 @@ ENV AMQ_HOST=amq-broker.demo-tuxedo.svc.cluster.local
 ENV AMQ_PORT=5672
 ENV AMQ_QUEUE=TUXEDO.OUT
 
-# Copy mock server script
-COPY --chown=oracle:oracle scripts/msgsvc-mock.py $APPDIR/
+# Copy mock server scripts
+COPY --chown=oracle:oracle scripts/msgsvc-mock.py scripts/start-mock.sh $APPDIR/
 
 # Set working directory
 WORKDIR $APPDIR
 
-# Make script executable
-RUN chmod +x $APPDIR/msgsvc-mock.py
+# Make scripts executable
+RUN chmod +x $APPDIR/msgsvc-mock.py $APPDIR/start-mock.sh
 
 # Expose WSL port (HTTP receiver)
 EXPOSE 8080
@@ -56,4 +56,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
 
 # Override base image ENTRYPOINT and run mock server
 ENTRYPOINT []
-CMD ["python3", "/u01/oracle/user_projects/tuxdemo/msgsvc-mock.py"]
+CMD ["/u01/oracle/user_projects/tuxdemo/start-mock.sh"]
