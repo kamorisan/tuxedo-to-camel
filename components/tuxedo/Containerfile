@@ -51,6 +51,7 @@ WORKDIR $APPDIR
 
 # Build the Tuxedo service
 RUN cd $APPDIR && \
+    export CC=/usr/bin/gcc && \
     buildserver -v -o MSGSVC \
                 -f "src/MSGSVC.c src/amqclient.c" \
                 -l "-lqpid-proton"
