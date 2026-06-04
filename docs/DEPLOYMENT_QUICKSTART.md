@@ -17,7 +17,6 @@ oc login https://api.your-cluster.example.com:6443
 ```bash
 git clone https://github.com/kamorisan/tuxedo-to-camel.git
 cd tuxedo-to-camel
-git checkout feature/tuxedo-q-c-implementation
 ```
 
 ### Step 3: デプロイ実行

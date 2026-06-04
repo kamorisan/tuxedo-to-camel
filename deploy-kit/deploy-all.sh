@@ -18,7 +18,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Configuration
 GIT_REPO="${GIT_REPO:-https://github.com/kamorisan/tuxedo-to-camel.git}"
-GIT_BRANCH="${GIT_BRANCH:-feature/tuxedo-q-c-implementation}"
+GIT_BRANCH="${GIT_BRANCH:-main}"
 
 # Color output
 RED='\033[0;31m'

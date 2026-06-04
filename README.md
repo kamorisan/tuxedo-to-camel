@@ -33,7 +33,6 @@ Web UI → Tuxedo Service → Tuxedo /Q → Apache Camel → Kafka Broker
 ```bash
 git clone https://github.com/kamorisan/tuxedo-to-camel.git
 cd tuxedo-to-camel
-git checkout feature/tuxedo-q-c-implementation
 
 # OpenShiftにログイン
 oc login https://api.your-cluster.example.com:6443
@@ -43,7 +42,7 @@ cd deploy-kit
 ./deploy-all.sh
 ```
 
-詳細: [DEPLOYMENT_QUICKSTART.md](DEPLOYMENT_QUICKSTART.md)
+詳細: [DEPLOYMENT_QUICKSTART.md](docs/DEPLOYMENT_QUICKSTART.md)
 
 ### ローカルで試す（Mac/Linux + Podman）
 
@@ -57,7 +56,7 @@ cd tuxedo-to-camel
 ./scripts/test-local.sh
 ```
 
-詳細: [QUICKSTART_LOCAL.md](QUICKSTART_LOCAL.md)
+詳細: [QUICKSTART_LOCAL.md](docs/QUICKSTART_LOCAL.md)
 
 ---
 
@@ -103,17 +102,17 @@ tuxedo-to-camel/
 
 ### デプロイ
 
-- **[DEPLOYMENT_QUICKSTART.md](DEPLOYMENT_QUICKSTART.md)** - 5ステップでOpenShiftにデプロイ
+- **[DEPLOYMENT_QUICKSTART.md](docs/DEPLOYMENT_QUICKSTART.md)** - 5ステップでOpenShiftにデプロイ
 - **[deploy-kit/README.md](deploy-kit/README.md)** - 詳細デプロイガイド
 
 ### ローカル開発
 
-- **[QUICKSTART_LOCAL.md](QUICKSTART_LOCAL.md)** - Mac/Linuxでローカル実行
+- **[QUICKSTART_LOCAL.md](docs/QUICKSTART_LOCAL.md)** - Mac/Linuxでローカル実行
 - **[scripts/README.md](scripts/README.md)** - スクリプト使用方法
 
 ### テスト
 
-- **[E2E_TEST_GUIDE.md](E2E_TEST_GUIDE.md)** - E2E統合テスト手順
+- **[E2E_TEST_GUIDE.md](docs/E2E_TEST_GUIDE.md)** - E2E統合テスト手順
 
 ### 技術詳細
 

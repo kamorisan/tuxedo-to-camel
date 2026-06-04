@@ -368,8 +368,8 @@ deploy-kit/
 
 ### ドキュメント
 
-- [QUICKSTART_LOCAL.md](../QUICKSTART_LOCAL.md) - ローカル実行ガイド
-- [E2E_TEST_GUIDE.md](../E2E_TEST_GUIDE.md) - E2Eテストガイド
+- [QUICKSTART_LOCAL.md](../docs/QUICKSTART_LOCAL.md) - ローカル実行ガイド
+- [E2E_TEST_GUIDE.md](../docs/E2E_TEST_GUIDE.md) - E2Eテストガイド
 - [components/tuxedo/README_C_IMPLEMENTATION.md](../components/tuxedo/README_C_IMPLEMENTATION.md) - C実装詳細
 
 ### 問題報告
