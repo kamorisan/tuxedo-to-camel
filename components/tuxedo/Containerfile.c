@@ -28,7 +28,7 @@ USER oracle
 ENV TUXDIR=/u01/oracle/tuxHome/tuxedo22.1.1.0.0
 ENV APPDIR=/u01/oracle/user_projects/tuxdemo
 ENV PATH=$PATH:$TUXDIR/bin
-ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$TUXDIR/lib
+ENV LD_LIBRARY_PATH=/usr/lib:/usr/lib64:$TUXDIR/lib:$LD_LIBRARY_PATH
 ENV TUXCONFIG=$APPDIR/tuxconfig
 
 # Copy Tuxedo configuration and C source
