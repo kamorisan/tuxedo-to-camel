@@ -1,0 +1,40 @@
+# Oracle Tuxedo Base Image with SDK (Simple approach)
+# Manually adds SDK files extracted from ZIP
+
+FROM oracle/tuxedo:22.1.1.0.0
+
+USER root
+
+# Install development tools
+RUN yum -y install gcc make libmicrohttpd-devel && yum clean all
+
+# Copy SDK files (extracted manually from tuxedo221100_64_linux_01_x86.zip)
+# You need to:
+# 1. Install Tuxedo locally or in a temp container
+# 2. Extract include/ and bin/ directories
+# 3. Place them in this directory as sdk/include and sdk/bin
+
+COPY sdk/include/ /u01/oracle/tuxHome/tuxedo22.1.1.0.0/include/
+COPY sdk/bin/tmloadcf /u01/oracle/tuxHome/tuxedo22.1.1.0.0/bin/
+COPY sdk/bin/tmboot /u01/oracle/tuxHome/tuxedo22.1.1.0.0/bin/
+COPY sdk/bin/tmshutdown /u01/oracle/tuxHome/tuxedo22.1.1.0.0/bin/
+COPY sdk/bin/tmadmin /u01/oracle/tuxHome/tuxedo22.1.1.0.0/bin/
+COPY sdk/bin/buildclient /u01/oracle/tuxHome/tuxedo22.1.1.0.0/bin/
+COPY sdk/bin/buildserver /u01/oracle/tuxHome/tuxedo22.1.1.0.0/bin/
+
+# Fix ownership
+RUN chown -R oracle:oracle /u01/oracle/tuxHome/tuxedo22.1.1.0.0/
+
+USER oracle
+
+# Set environment
+ENV TUXDIR=/u01/oracle/tuxHome/tuxedo22.1.1.0.0
+ENV PATH=$TUXDIR/bin:$PATH
+ENV LD_LIBRARY_PATH=$TUXDIR/lib:$LD_LIBRARY_PATH
+
+# Verify installation
+RUN test -f $TUXDIR/include/atmi.h && \
+    test -f $TUXDIR/include/tmqueue.h && \
+    echo "SDK files verified"
+
+CMD ["/bin/bash"]
