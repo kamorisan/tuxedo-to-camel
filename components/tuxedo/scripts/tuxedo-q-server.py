@@ -27,11 +27,15 @@ QUEUE_NAME = os.getenv('TUXEDO_QUEUE', 'DEMO_QUEUE')
 # Global TuxedoQueue instance
 tuxedo_queue = None
 
+# In-memory fallback queue (when Tuxedo /Q not available)
+fallback_queue = []
+
 if TUXEDO_Q_AVAILABLE:
     try:
         tuxedo_queue = TuxedoQueue()
     except Exception as e:
         print(f'[TuxedoQ-Server] Failed to initialize TuxedoQueue: {e}', flush=True)
+        print(f'[TuxedoQ-Server] Using in-memory fallback queue', flush=True)
 
 
 class TuxedoQHandler(http.server.BaseHTTPRequestHandler):
@@ -69,31 +73,32 @@ class TuxedoQHandler(http.server.BaseHTTPRequestHandler):
             
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             print(f'[{timestamp}] [TuxedoQ-Server] Received for enqueue: {body[:100]}...', flush=True)
-            
-            if not TUXEDO_Q_AVAILABLE or not tuxedo_queue:
-                # Fallback: just log
-                print(f'[TuxedoQ-Server] Tuxedo /Q not available, logging only', flush=True)
+
+            success = False
+
+            # Try Tuxedo /Q first
+            if TUXEDO_Q_AVAILABLE and tuxedo_queue:
+                success = tuxedo_queue.enqueue(QUEUE_NAME, body)
+
+            # Fallback to in-memory queue
+            if not success:
+                global fallback_queue
+                fallback_queue.append(body)
+                print(f'[TuxedoQ-Server] Enqueued to in-memory fallback queue (size: {len(fallback_queue)})', flush=True)
+                success = True
+
+            if success:
                 response = {
                     'status': 'success',
-                    'message': 'Message logged (Tuxedo /Q not available)',
+                    'message': 'Message enqueued',
                     'queue': QUEUE_NAME
                 }
             else:
-                # Enqueue to Tuxedo /Q
-                success = tuxedo_queue.enqueue(QUEUE_NAME, body)
-                
-                if success:
-                    response = {
-                        'status': 'success',
-                        'message': 'Message enqueued to Tuxedo /Q',
-                        'queue': QUEUE_NAME
-                    }
-                else:
-                    response = {
-                        'status': 'error',
-                        'message': 'Failed to enqueue message',
-                        'queue': QUEUE_NAME
-                    }
+                response = {
+                    'status': 'error',
+                    'message': 'Failed to enqueue message',
+                    'queue': QUEUE_NAME
+                }
             
             # Send response
             self.send_response(200)
@@ -110,28 +115,30 @@ class TuxedoQHandler(http.server.BaseHTTPRequestHandler):
     def _handle_dequeue(self):
         """Dequeue message from Tuxedo /Q"""
         try:
-            if not TUXEDO_Q_AVAILABLE or not tuxedo_queue:
-                # No Tuxedo /Q - return empty
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({'message': None}).encode('utf-8'))
-                return
-            
-            # Dequeue from Tuxedo /Q (non-blocking)
-            message = tuxedo_queue.dequeue(QUEUE_NAME, wait=False)
-            
+            message = None
+
+            # Try Tuxedo /Q first
+            if TUXEDO_Q_AVAILABLE and tuxedo_queue:
+                message = tuxedo_queue.dequeue(QUEUE_NAME, wait=False)
+
+            # Fallback to in-memory queue
+            if message is None:
+                global fallback_queue
+                if len(fallback_queue) > 0:
+                    message = fallback_queue.pop(0)
+                    print(f'[TuxedoQ-Server] Dequeued from in-memory fallback queue (remaining: {len(fallback_queue)})', flush=True)
+
             response = {
                 'message': message,
                 'queue': QUEUE_NAME,
                 'timestamp': datetime.now().isoformat()
             }
-            
+
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps(response).encode('utf-8'))
-            
+
         except Exception as e:
             print(f'[TuxedoQ-Server] Dequeue error: {e}', flush=True)
             import traceback
