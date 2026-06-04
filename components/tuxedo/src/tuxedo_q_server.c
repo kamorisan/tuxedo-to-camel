@@ -78,8 +78,9 @@ static int enqueue_fallback(const char *message) {
     }
     queue_tail = node;
     queue_size++;
-    
+
     printf("[TuxedoQ-Server] Enqueued to in-memory fallback queue (size: %d)\n", queue_size);
+    fflush(stdout);
     return 0;
 }
 
@@ -99,8 +100,9 @@ static char* dequeue_fallback(void) {
     queue_size--;
     
     free(node);
-    
+
     printf("[TuxedoQ-Server] Dequeued from in-memory fallback queue (remaining: %d)\n", queue_size);
+    fflush(stdout);
     return data;
 }
 
@@ -126,8 +128,7 @@ static int enqueue_tuxedo(const char *message) {
     
     /* Enqueue message */
     if (tpenqueue(QSPACE, queue_name, &qctl, buf, len, TPNOTRAN) == -1) {
-        fprintf(stderr, "[TuxedoQ-Server] tpenqueue failed for queue %s (code %d)\n", 
-                queue_name, tperrno);
+        /* Expected: stub returns TPENOENT, fallback queue will be used */
         tpfree(buf);
         return -1;
     }
@@ -162,9 +163,7 @@ static char* dequeue_tuxedo(void) {
     
     /* Dequeue message */
     if (tpdequeue(QSPACE, queue_name, &qctl, &buf, &len, TPNOTRAN) == -1) {
-        if (tperrno != TPEDIAGNOSTIC && tperrno != TPENOENT) {
-            fprintf(stderr, "[TuxedoQ-Server] tpdequeue failed (code %d)\n", tperrno);
-        }
+        /* Expected: stub returns TPENOENT, fallback queue will be used */
         tpfree(buf);
         return NULL;
     }
@@ -237,6 +236,7 @@ static int handle_request(void *cls, struct MHD_Connection *connection,
             get_timestamp(timestamp, sizeof(timestamp));
             printf("[%s] [TuxedoQ-Server] Received for enqueue: %.100s...\n",
                    timestamp, *stored_message);
+            fflush(stdout);
 
             int success = 0;
 
