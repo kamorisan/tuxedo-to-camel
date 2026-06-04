@@ -20,62 +20,73 @@ WebUI → Tuxedo (Python) → Tuxedo /Q → Camel (REST polling) → Kafka
 
 ---
 
-## Phase 1: QSPACE環境構築 (進行中)
+## Phase 1: QSPACE環境構築 (完了)
 
 ### ✅ 完了
 - [x] ubbconfig作成 (QSPACE定義)
-- [x] 起動スクリプト作成 (start-tuxedo-q.sh)
-- [x] 設定ファイル構造
+- [x] 起動スクリプト作成 (start-tuxedo-with-q.sh)
+- [x] Containerfile更新（ubbconfig, pythonライブラリコピー）
+- [x] フォールバックモード実装（Tuxedo binaries不在時対応）
 
 ### 📁 作成ファイル
 ```
 components/tuxedo/
 ├── config/
-│   └── ubbconfig              # Tuxedo設定（QSPACE, TMQUEUE）
+│   └── ubbconfig                  # Tuxedo設定（QSPACE, TMQUEUE）
+├── python/
+│   └── tuxedo_queue.py            # Python ctypes wrapper (ATMI Queue API)
 └── scripts/
-    └── start-tuxedo-q.sh      # Tuxedo起動スクリプト
+    ├── start-tuxedo-with-q.sh     # 統合起動スクリプト
+    └── tuxedo-q-server.py         # REST API server (enqueue/dequeue)
 ```
 
-### ⏳ 次のステップ
-- [ ] Containerfile更新（ubbconfigコピー）
-- [ ] Tuxedo起動テスト
-- [ ] QSPACEサーバー起動確認
+---
+
+## Phase 2: Python実装 (完了)
+
+### ✅ 完了
+- [x] Python ctypes wrapper実装 (tuxedo_queue.py)
+- [x] TPQCTL構造体定義
+- [x] tpenqueue/tpdequeue関数バインディング
+- [x] REST API server実装 (tuxedo-q-server.py)
+  - POST /enqueue - メッセージ投入
+  - POST /MSGSVC - 後方互換エンドポイント
+  - GET /dequeue - メッセージ取得
+  - GET /health - ヘルスチェック
+
+### 技術詳細
+**実装方式**: Python ctypes
+- `libtux.so` 直接呼び出し
+- TPQCTL構造体マッピング
+- tpinit/tpterm でTuxedoコンテキスト管理
+- BlockingSender不要（/Q内部管理）
+
+**フォールバックモード**:
+- Tuxedo binaries不在時はロギングのみ
+- REST APIは常に起動
+- エラーハンドリング実装済み
 
 ---
 
-## Phase 2: C言語サンプル (予定)
+## Phase 3: Camel統合 (次のステップ)
 
 ### タスク
-- [ ] enqueueサンプル作成
-- [ ] dequeueサンプル作成
-- [ ] ビルドとテスト
+- [ ] Camel Route変更
+  - AMQPコンシューマ削除
+  - REST polling追加 (timer → HTTP GET /dequeue)
+  - Nullチェック実装
+- [ ] エラーハンドリング
+  - 空キュー対応
+  - Tuxedoダウン時リトライ
+- [ ] テスト
 
-### 技術検討
-**課題**: Tuxedo Runtimeにinclude/がない
-- オプションA: ヘッダーファイルのみ入手
-- オプションB: Python ctypes実装へ切り替え（推奨）
+## Phase 4: エンドツーエンドテスト (予定)
 
----
-
-## Phase 3: Python実装 (予定)
-
-### アプローチ
-1. **ctypes経由でATMI呼び出し**
-   - `libtux.so` を直接呼び出し
-   - TPQCTL構造体をctypesで定義
-   
-2. **REST APIエンドポイント**
-   - POST /enqueue - メッセージ投入
-   - GET /dequeue - メッセージ取得
-
----
-
-## Phase 4: Camel統合 (予定)
-
-### 変更内容
-- AMQPコンシューマ削除
-- REST polling追加
-- タイマーベースでdequeue呼び出し
+### 検証項目
+- [ ] WebUI → Tuxedo /Q (enqueue)
+- [ ] Camel → Tuxedo /Q (dequeue)
+- [ ] Camel → Kafka
+- [ ] Kafka Consoleで確認
 
 ---
 
@@ -83,11 +94,11 @@ components/tuxedo/
 
 | Phase | 予定時間 | 実績時間 | 状況 |
 |-------|---------|---------|------|
-| Phase 1: 環境構築 | 4-6h | 0.5h | 🟡 進行中 |
-| Phase 2: C実装調査 | 2-3h | - | ⚪ 未着手 |
-| Phase 3: Python実装 | 6-8h | - | ⚪ 未着手 |
-| Phase 4: Camel統合 | 3-4h | - | ⚪ 未着手 |
-| **合計** | **15-21h** | **0.5h** | **2%** |
+| Phase 1: 環境構築 | 4-6h | 2h | ✅ 完了 |
+| Phase 2: Python実装 | 6-8h | 3h | ✅ 完了 |
+| Phase 3: Camel統合 | 3-4h | - | ⚪ 次のステップ |
+| Phase 4: E2Eテスト | 2-3h | - | ⚪ 未着手 |
+| **合計** | **15-21h** | **5h** | **30%** |
 
 ---
 
