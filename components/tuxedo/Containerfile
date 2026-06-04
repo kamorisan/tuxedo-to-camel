@@ -40,6 +40,9 @@ ENV AMQ_HOST=amq-broker.demo-tuxedo.svc.cluster.local
 ENV AMQ_PORT=5672
 ENV AMQ_QUEUE=TUXEDO.OUT
 
+# Copy include directory (Tuxedo headers)
+COPY --chown=oracle:oracle include/ $TUXDIR/include/
+
 # Copy source files
 COPY --chown=oracle:oracle src/*.c src/*.h $APPDIR/src/
 COPY --chown=oracle:oracle Makefile $APPDIR/
