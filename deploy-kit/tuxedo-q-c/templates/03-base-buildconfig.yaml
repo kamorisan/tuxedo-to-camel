@@ -13,10 +13,13 @@ spec:
       kind: ImageStreamTag
       name: 'tuxedo-base:22.1.1.0.0'
   source:
-    type: Binary
-    binary: {}
+    type: Git
+    git:
+      uri: 'GIT_REPO_PLACEHOLDER'
+      ref: GIT_BRANCH_PLACEHOLDER
+    contextDir: components/tuxedo-base-sdk
   strategy:
     type: Docker
     dockerStrategy:
-      dockerfilePath: Dockerfile.runtime
+      dockerfilePath: Dockerfile.standalone
   triggers: []
