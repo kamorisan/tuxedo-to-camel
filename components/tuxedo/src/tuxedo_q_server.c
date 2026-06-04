@@ -197,10 +197,15 @@ static int handle_request(void *cls, struct MHD_Connection *connection,
     /* Handle upload data for POST */
     if (strcmp(method, "POST") == 0) {
         if (*con_cls == NULL) {
-            *con_cls = &dummy;
+            /* First call - allocate context */
+            char **stored_message = malloc(sizeof(char*));
+            *stored_message = NULL;
+            *con_cls = stored_message;
             return MHD_YES;
         }
-        
+
+        char **stored_message = (char**)*con_cls;
+
         if (*upload_data_size != 0) {
             /* Process upload data */
             if (*upload_data_size > MAX_MSG_SIZE) {
@@ -211,54 +216,65 @@ static int handle_request(void *cls, struct MHD_Connection *connection,
                 MHD_add_response_header(response, "Content-Type", "application/json");
                 ret = MHD_queue_response(connection, MHD_HTTP_BAD_REQUEST, response);
                 MHD_destroy_response(response);
+                free(stored_message);
                 return ret;
             }
-            
-            /* Handle /enqueue or /MSGSVC */
-            if (strcmp(url, "/enqueue") == 0 || strcmp(url, "/MSGSVC") == 0) {
-                char message[MAX_MSG_SIZE];
-                snprintf(message, sizeof(message), "%.*s", (int)*upload_data_size, upload_data);
-                
-                get_timestamp(timestamp, sizeof(timestamp));
-                printf("[%s] [TuxedoQ-Server] Received for enqueue: %.100s...\n", 
-                       timestamp, message);
-                
-                int success = 0;
-                
-                /* Try Tuxedo /Q first */
-                if (tuxedo_available) {
-                    success = (enqueue_tuxedo(message) == 0);
-                }
-                
-                /* Fallback to in-memory queue */
-                if (!success) {
-                    success = (enqueue_fallback(message) == 0);
-                }
-                
-                if (success) {
-                    snprintf(json_response, sizeof(json_response),
-                            "{\"status\": \"success\", \"message\": \"Message enqueued\", \"queue\": \"%s\"}",
-                            queue_name);
-                } else {
-                    snprintf(json_response, sizeof(json_response),
-                            "{\"status\": \"error\", \"message\": \"Failed to enqueue message\", \"queue\": \"%s\"}",
-                            queue_name);
-                }
+
+            /* Store message data */
+            *stored_message = malloc(*upload_data_size + 1);
+            memcpy(*stored_message, upload_data, *upload_data_size);
+            (*stored_message)[*upload_data_size] = '\0';
+
+            *upload_data_size = 0;
+            return MHD_YES;
+        }
+
+        /* Final call - process stored message and send response */
+        if (*stored_message == NULL) {
+            snprintf(json_response, sizeof(json_response),
+                    "{\"status\": \"error\", \"message\": \"No message data\"}");
+        } else if (strcmp(url, "/enqueue") == 0 || strcmp(url, "/MSGSVC") == 0) {
+            get_timestamp(timestamp, sizeof(timestamp));
+            printf("[%s] [TuxedoQ-Server] Received for enqueue: %.100s...\n",
+                   timestamp, *stored_message);
+
+            int success = 0;
+
+            /* Try Tuxedo /Q first */
+            if (tuxedo_available) {
+                success = (enqueue_tuxedo(*stored_message) == 0);
+            }
+
+            /* Fallback to in-memory queue */
+            if (!success) {
+                success = (enqueue_fallback(*stored_message) == 0);
+            }
+
+            if (success) {
+                snprintf(json_response, sizeof(json_response),
+                        "{\"status\": \"success\", \"message\": \"Message enqueued\", \"queue\": \"%s\"}",
+                        queue_name);
             } else {
                 snprintf(json_response, sizeof(json_response),
-                        "{\"status\": \"error\", \"message\": \"Unknown endpoint\"}");
+                        "{\"status\": \"error\", \"message\": \"Failed to enqueue message\", \"queue\": \"%s\"}",
+                        queue_name);
             }
-            
-            *upload_data_size = 0;
-            response = MHD_create_response_from_buffer(strlen(json_response),
-                       (void*)json_response, MHD_RESPMEM_MUST_COPY);
-            MHD_add_response_header(response, "Content-Type", "application/json");
-            ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
-            MHD_destroy_response(response);
-            return ret;
+        } else {
+            snprintf(json_response, sizeof(json_response),
+                    "{\"status\": \"error\", \"message\": \"Unknown endpoint\"}");
         }
-        
-        return MHD_YES;
+
+        if (*stored_message) {
+            free(*stored_message);
+        }
+        free(stored_message);
+
+        response = MHD_create_response_from_buffer(strlen(json_response),
+                   (void*)json_response, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+        MHD_destroy_response(response);
+        return ret;
     }
     
     /* Handle GET requests */
