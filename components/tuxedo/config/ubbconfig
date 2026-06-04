@@ -1,39 +1,37 @@
+#
+# Tuxedo UBB Configuration for Demo
+# Queue Space (QSPACE) for message queuing
+#
+
 *RESOURCES
-IPCKEY          112233
+IPCKEY          123456
 DOMAINID        tuxdemo
-MASTER          site1
+MASTER          simpapp
 MAXACCESSERS    50
 MAXSERVERS      20
-MAXSERVICES     20
+MAXSERVICES     30
 MODEL           SHM
-LDBAL           Y
+LDBAL           N
 
 *MACHINES
-DEFAULT:
-        APPDIR="/u01/oracle/user_projects/tuxdemo"
-        TUXCONFIG="/u01/oracle/user_projects/tuxdemo/tuxconfig"
-        TUXDIR="/u01/oracle/tuxHome/tuxedo22.1.1.0.0"
-        TLOGDEVICE="/u01/oracle/user_projects/tuxdemo/TLOG"
-        TLOGSIZE=10
-
-"tuxhost"       LMID=site1 MAXWSCLIENTS=10
+"tuxedo-msgsvc" LMID=simpapp
+                APPDIR="/u01/oracle/user_projects/tuxdemo"
+                TUXCONFIG="/u01/oracle/user_projects/tuxdemo/tuxconfig"
+                TUXDIR="/u01/oracle/tuxHome/tuxedo22.1.1.0.0"
 
 *GROUPS
-APPGRP          LMID=site1 GRPNO=1 OPENINFO=NONE
-WSGRP           LMID=site1 GRPNO=2 OPENINFO=NONE
+GROUP1          LMID=simpapp GRPNO=1
 
 *SERVERS
-# Message Service Server
-MSGSVC          SRVGRP=APPGRP   SRVID=1 CLOPT="-A"
-
-# WebService Listener (HTTP receiver)
-# Listens on port 8080 for HTTP requests
-# -n //0.0.0.0:8080 : Listen on all interfaces, port 8080
-# -m 1 : Minimum WSL instances
-# -M 5 : Maximum WSL instances
-# -x 10: Request timeout (seconds)
-WSL             SRVGRP=WSGRP    SRVID=1 CLOPT="-A -- -n //0.0.0.0:8080 -m 1 -M 5 -x 10"
+# Queue Space Server
+TMQUEUE         SRVGRP=GROUP1 SRVID=1
+                MIN=1 MAX=1 RESTART=Y GRACE=0
+                CLOPT="-s QSPACE:DEMO_QUEUE --"
 
 *SERVICES
-# Service name exposed via WSL
-MSGSVC
+# Queue Space Service
+QSPACE
+
+*QUEUES
+# Demo Queue for Tuxedo to Camel messaging
+DEMO_QUEUE
