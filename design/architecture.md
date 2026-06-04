@@ -43,7 +43,7 @@
 │     └──────────────┘                                              │
 │                                                                     │
 │  ┌──────────────────────────────────────────────────────────────┐  │
-│  │ Red Hat AMQ (ActiveMQ Artemis) - Shared Service             │  │
+│  │ Tuxedo /Q (Tuxedo Queue) - Shared Service                  │  │
 │  │ - demo-tuxedo と demo-camel 間で使用                         │  │
 │  └──────────────────────────────────────────────────────────────┘  │
 │                                                                     │
@@ -66,11 +66,11 @@
     ▼
 [Tuxedo Service]
     │
-    │ 3. AMQ Queue へ送信
+    │ 3. Tuxedo /Q へ送信
     │    Queue: TUXEDO.OUT
     │    Message: "Hello World!"
     ▼
-[Red Hat AMQ]
+[Tuxedo /Q]
     │
     │ 4. Queue から取得
     ▼
@@ -98,8 +98,8 @@
 | 入力 | Quarkus WebUI | ユーザーからメッセージ受信 | `[WebUI] Received: {message}` |
 | 転送 | Quarkus WebUI | TuxedoへHTTP POST | `[WebUI] Sent to Tuxedo: {message}` |
 | 受信 | Tuxedo Service | メッセージ受信・検証 | `[Tuxedo] Received: {message}` |
-| キュー送信 | Tuxedo Service | AMQキューへ送信 | `[Tuxedo] Queued to AMQ: {message}` |
-| キュー受信 | Apache Camel | AMQキューから取得 | `[Camel] Consumed from queue: {message}` |
+| キュー送信 | Tuxedo Service | Tuxedo /Qキューへ送信 | `[Tuxedo] Queued to /Q: {message}` |
+| キュー受信 | Apache Camel | Tuxedo /Qキューから取得 | `[Camel] Consumed from queue: {message}` |
 | 変換 | Apache Camel | JSON構造化 | `[Camel] Transformed: {json}` |
 | 送信 | Apache Camel | Kafkaへ送信 | `[Camel] Sent to Kafka topic: {topic}` |
 | 永続化 | Kafka | メッセージ保存 | `[Kafka] Stored message offset: {offset}` |
@@ -131,20 +131,21 @@
 **技術スタック:**
 - C言語
 - Oracle Tuxedo フレームワーク
-- AMQP C Client Library (AMQ送信)
+- Tuxedo /Q (QSPACE)
 
 **機能:**
 - Tuxedoサービスとしてメッセージ受信
 - ビジネスロジック処理（ログ記録）
-- AMQキューへメッセージ送信
+- Tuxedo /Qキューへメッセージ送信
 
 **Tuxedoサービス:**
 - サービス名: `MSGSVC`
 - バッファタイプ: STRING
 
-**AMQ設定:**
+**Tuxedo /Q設定:**
+- Queue Space: `QSPACE`
 - Queue Name: `TUXEDO.OUT`
-- Protocol: AMQP
+- Protocol: ATMI (tpenqueue/tpdequeue)
 
 **コンテナイメージ:**
 - ベース: Oracle Tuxedo Runtime Container
@@ -155,17 +156,17 @@
 **技術スタック:**
 - Apache Camel 4.x
 - Camel Quarkus
-- Camel AMQ Component
+- Tuxedo /Q Integration
 - Camel Kafka Component
 
 **機能:**
-- AMQキューからメッセージ消費
+- Tuxedo /Qキューからメッセージ消費
 - メッセージ変換（平文 → JSON）
 - Kafkaトピックへ送信
 
 **Camel Route:**
 ```java
-from("amqp:queue:TUXEDO.OUT")
+from("tuxedo:queue:TUXEDO.OUT")
     .log("[Camel] Consumed from queue: ${body}")
     .process(exchange -> {
         String message = exchange.getIn().getBody(String.class);
@@ -185,20 +186,21 @@ from("amqp:queue:TUXEDO.OUT")
 **コンテナイメージ:**
 - ベース: `registry.access.redhat.com/ubi9/openjdk-17`
 
-### 4.4 Red Hat AMQ (Shared)
+### 4.4 Tuxedo /Q (Shared)
 
 **デプロイ方式:**
-- Red Hat AMQ Operator
-- または AMQ Broker コンテナイメージ直接デプロイ
+- Tuxedo QSPACE サーバー
+- Tuxedo /Q メッセージキュー
 
 **設定:**
+- Queue Space: `QSPACE`
 - Queue: `TUXEDO.OUT`
-- Protocol: AMQP, CORE
-- Persistent: false (デモ用)
+- Protocol: ATMI (tpenqueue/tpdequeue)
+- Persistent: false (デモ用、インメモリフォールバック)
 
 **アクセス:**
-- demo-tuxedo → AMQ Service (Producer)
-- demo-camel → AMQ Service (Consumer)
+- demo-tuxedo → Tuxedo /Q (Producer)
+- demo-camel → Tuxedo /Q (Consumer)
 
 ### 4.5 Kafka (demo-kafka)
 
@@ -221,7 +223,8 @@ from("amqp:queue:TUXEDO.OUT")
 | Namespace | コンポーネント | 用途 |
 |-----------|--------------|------|
 | demo-webui | Quarkus Web App | ユーザーインターフェース |
-| demo-tuxedo | Tuxedo Service, AMQ Broker | レガシーシステム層 |
+| demo-tuxedo | Tuxedo Service, Tuxedo /Q | レガシーシステム層 |
+| demo-tuxedo-c | Tuxedo C Implementation, Tuxedo /Q | レガシーシステム層 (C版) |
 | demo-camel | Apache Camel | 統合・変換層 |
 | demo-kafka | Kafka Cluster, Kafka Console | メッセージング基盤 |
 

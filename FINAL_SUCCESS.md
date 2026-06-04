@@ -101,6 +101,10 @@ curl -X POST http://localhost:8081/enqueue -d "Hello from C!"
 ## Architecture
 
 ```
+┌─────────────────────────────────────────────────────────────────┐
+│ Web UI → Tuxedo Service → Tuxedo /Q → Apache Camel → Kafka     │
+└─────────────────────────────────────────────────────────────────┘
+
 ┌─────────────────────────────────────┐
 │ OpenShift (demo-tuxedo-c)          │
 │                                     │
@@ -121,7 +125,7 @@ curl -X POST http://localhost:8081/enqueue -d "Hello from C!"
 │  │  └──────┬─────────────────┘  │  │
 │  │         │                    │  │
 │  │  ┌──────▼─────────────────┐  │  │
-│  │  │ Fallback Queue         │  │  │
+│  │  │ Tuxedo /Q (Fallback)   │  │  │
 │  │  │ (in-memory linked list)│  │  │
 │  │  │ - enqueue ✓            │  │  │
 │  │  │ - dequeue ✓            │  │  │

@@ -18,7 +18,7 @@ public class MessageRoute extends RouteBuilder {
         from("timer:tuxedo-q-poll?period=1000&fixedRate=true")
             .routeId("tuxedoq-to-kafka")
             .setHeader("CamelHttpMethod", constant("GET"))
-            .to("http://tuxedo-msgsvc.demo-tuxedo.svc.cluster.local:8080/dequeue?bridgeEndpoint=true&throwExceptionOnFailure=false")
+            .to("http://tuxedo-msgsvc.demo-tuxedo-c.svc.cluster.local:8080/dequeue?bridgeEndpoint=true&throwExceptionOnFailure=false")
             // Parse JSON response
             .unmarshal().json(JsonLibrary.Jackson, Map.class)
             .process(exchange -> {

@@ -7,7 +7,12 @@ Complete deployment automation for Tuxedo /Q with **C native implementation**.
 This deployment kit provides automated deployment of:
 - Tuxedo /Q REST API Server (**C implementation** with ATMI API)
 - WebUI (Quarkus REST client)
-- Camel Integration (REST polling → Kafka)
+- Camel Integration (Tuxedo /Q → Kafka)
+
+**Data Flow:**
+```
+Web UI → Tuxedo Service → Tuxedo /Q → Apache Camel → Kafka Broker
+```
 
 **Difference from Python version**:
 - Uses `Containerfile.c` instead of `Containerfile`
