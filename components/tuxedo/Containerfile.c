@@ -43,8 +43,9 @@ WORKDIR $APPDIR
 # Build C implementation with stub functions
 RUN make stub && make || echo "Build may fail without Tuxedo SDK headers"
 
-# Make scripts executable
-RUN chmod +x $APPDIR/start-tuxedo-q-c.sh
+# Make scripts executable and create symlink for compatibility
+RUN chmod +x $APPDIR/start-tuxedo-q-c.sh && \
+    ln -s $APPDIR/start-tuxedo-q-c.sh $APPDIR/start-tuxedo-with-q.sh
 
 # Expose HTTP port
 EXPOSE 8080
