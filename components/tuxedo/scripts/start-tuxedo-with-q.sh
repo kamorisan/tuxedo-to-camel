@@ -6,10 +6,17 @@ set -e
 APPDIR=/u01/oracle/user_projects/tuxdemo
 TUXDIR=/u01/oracle/tuxHome/tuxedo22.1.1.0.0
 
-export TUXDIR TUXCONFIG=$APPDIR/tuxconfig
+export TUXDIR
+export TUXCONFIG=$APPDIR/tuxconfig
 export PATH=$TUXDIR/bin:$PATH
-export LD_LIBRARY_PATH=$TUXDIR/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$TUXDIR/lib:${LD_LIBRARY_PATH}
 export TUXEDO_QUEUE=${TUXEDO_QUEUE:-DEMO_QUEUE}
+
+# Debug: Show environment
+echo "[Tuxedo-Startup] TUXDIR=$TUXDIR"
+echo "[Tuxedo-Startup] PATH=$PATH"
+echo "[Tuxedo-Startup] LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+echo "[Tuxedo-Startup] tmloadcf location: $(which tmloadcf || echo 'NOT FOUND')"
 
 cd $APPDIR
 
