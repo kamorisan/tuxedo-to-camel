@@ -18,5 +18,5 @@ spec:
   strategy:
     type: Docker
     dockerStrategy:
-      dockerfilePath: Dockerfile.ubi
+      dockerfilePath: Dockerfile.runtime
   triggers: []
