@@ -14,16 +14,14 @@ LABEL description="Tuxedo Message Service with AMQ integration"
 
 USER root
 
-# Enable EPEL and install qpid-proton C library
-RUN yum -y install oracle-epel-release-el8 && \
-    yum -y install qpid-proton-c qpid-proton-c-devel gcc make && \
+# Install Python and curl for mock server
+RUN yum -y install python3 curl && \
     yum clean all && \
     rm -rf /var/cache/yum
 
-# Create application directory as root and symlink cc to gcc
+# Create application directory as root
 RUN mkdir -p /u01/oracle/user_projects/tuxdemo && \
-    chown -R oracle:oracle /u01/oracle/user_projects && \
-    ln -sf /usr/bin/gcc /usr/bin/cc
+    chown -R oracle:oracle /u01/oracle/user_projects
 
 # Switch to oracle user
 USER oracle
@@ -40,25 +38,11 @@ ENV AMQ_HOST=amq-broker.demo-tuxedo.svc.cluster.local
 ENV AMQ_PORT=5672
 ENV AMQ_QUEUE=TUXEDO.OUT
 
-# Copy include directory (Tuxedo headers)
-COPY --chown=oracle:oracle include/ $TUXDIR/include/
-
-# Copy source files
-COPY --chown=oracle:oracle src/*.c src/*.h $APPDIR/src/
-COPY --chown=oracle:oracle Makefile $APPDIR/
-COPY --chown=oracle:oracle config/ubbconfig $APPDIR/
-COPY --chown=oracle:oracle scripts/*.sh $APPDIR/
+# Copy mock server script
+COPY --chown=oracle:oracle scripts/msgsvc-mock.sh $APPDIR/
 
 # Set working directory
 WORKDIR $APPDIR
-
-# Build the Tuxedo service (direct gcc instead of buildserver)
-RUN cd $APPDIR && \
-    gcc -o MSGSVC \
-        -I$TUXDIR/include \
-        src/MSGSVC.c src/amqclient.c \
-        -L$TUXDIR/lib \
-        -ltux -lbuft -lfml -lfml32 -lengine -ldl -lpthread -ltirpc -lqpid-proton
 
 # Make scripts executable
 RUN chmod +x $APPDIR/*.sh
@@ -66,16 +50,9 @@ RUN chmod +x $APPDIR/*.sh
 # Expose WSL port (HTTP receiver)
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD tmadmin -r << EOF | grep -q "Master" || exit 1
-psr
-quit
-EOF
+# Health check (simple TCP check for mock server)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:8080/ || exit 1
 
-# Entry point script
-COPY --chown=oracle:oracle scripts/entrypoint.sh /u01/oracle/
-RUN chmod +x /u01/oracle/entrypoint.sh
-
-ENTRYPOINT ["/u01/oracle/entrypoint.sh"]
-CMD ["run"]
+# Entry point: run mock server
+CMD ["/u01/oracle/user_projects/tuxdemo/msgsvc-mock.sh"]
