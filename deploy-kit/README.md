@@ -1,428 +1,381 @@
-# OpenShift Deployment Kit
+# Tuxedo to Kafka Demo - デプロイキット
 
-**AMQ Broker**, **Kafka (AMQ Streams)**, **Kafka Console**を別環境のOpenShiftに簡単にデプロイするためのキットです。
+新しいOpenShift環境に完全なデモ環境を自動デプロイするスクリプト集です。
 
 ---
 
-## 📋 前提条件
+## 📋 目次
 
-- OpenShift 4.x クラスタへのアクセス
-- `oc` CLI ツール (OpenShift CLI)
-- cluster-admin または適切な権限
+- [概要](#概要)
+- [前提条件](#前提条件)
+- [クイックスタート](#クイックスタート)
+- [デプロイ内容](#デプロイ内容)
+- [使い方](#使い方)
+- [トラブルシューティング](#トラブルシューティング)
+- [クリーンアップ](#クリーンアップ)
+
+---
+
+## 概要
+
+このデプロイキットは、以下のコンポーネントを自動的にデプロイします：
+
+```
+Web UI → Tuxedo Service → Tuxedo /Q → Apache Camel → Kafka Broker
+```
+
+### デプロイされるコンポーネント
+
+1. **AMQ Streams Operator** - Kafka管理用Operator
+2. **Kafka Cluster** - メッセージブローカー（1レプリカ）
+3. **Tuxedo C Implementation** - C言語によるTuxedo /Q実装
+4. **Apache Camel** - Tuxedo /QとKafka間の統合
+5. **Quarkus WebUI** - メッセージ送信用Webインターフェース
+
+---
+
+## 前提条件
+
+### 必須
+
+- ✅ OpenShift 4.x クラスター
+- ✅ `oc` CLI インストール済み
+- ✅ クラスターへのログイン済み
+- ✅ cluster-admin権限 または 以下の権限:
+  - Namespace作成
+  - Operator管理
+  - BuildConfig/ImageStream作成
 
 ### 確認コマンド
 
 ```bash
-# OpenShift CLIバージョン確認
+# oc CLIバージョン確認
 oc version
 
-# ログイン確認
+# ログイン状態確認
 oc whoami
 
-# クラスタ情報確認
-oc cluster-info
+# 権限確認
+oc auth can-i create namespace
 ```
 
 ---
 
-## 🚀 クイックスタート
+## クイックスタート
 
-### 1. AMQ Brokerのデプロイ
+### 1行デプロイ
 
 ```bash
-cd deploy-kit/scripts
-
-# デフォルト設定でデプロイ (namespace: demo-amq, queue: EXAMPLE.QUEUE)
-./deploy-amq.sh
-
-# カスタム設定でデプロイ
-./deploy-amq.sh my-namespace MY.CUSTOM.QUEUE
+cd deploy-kit
+chmod +x deploy-all.sh cleanup.sh
+./deploy-all.sh
 ```
 
-**実行内容:**
-1. AMQ Broker Operatorインストール
-2. Namespace作成
-3. AMQ Broker インスタンスデプロイ
-4. Queueアドレス作成
-
-**デプロイ時間**: 約2-3分
-
----
-
-### 2. Kafka (AMQ Streams) + Consoleのデプロイ
+### 環境変数でカスタマイズ
 
 ```bash
-cd deploy-kit/scripts
+# 自分のフォークからデプロイ
+export GIT_REPO="https://github.com/YOUR_ORG/tuxedo-to-camel.git"
+export GIT_BRANCH="main"
 
-# デフォルト設定でデプロイ (namespace: demo-kafka, cluster: my-kafka)
-./deploy-kafka.sh
-
-# カスタム設定でデプロイ
-./deploy-kafka.sh my-namespace my-cluster-name
-
-# Console hostnameを明示的に指定
-./deploy-kafka.sh my-namespace my-cluster-name kafka-ui.apps.mycluster.example.com
-```
-
-**実行内容:**
-1. AMQ Streams Operatorインストール
-2. AMQ Streams Console Operatorインストール
-3. Namespace作成
-4. Kafka クラスターデプロイ (KRaftモード)
-5. Kafka Consoleデプロイ
-
-**デプロイ時間**: 約3-5分
-
----
-
-## 📁 ディレクトリ構成
-
-```
-deploy-kit/
-├── README.md                    # このファイル
-├── amq/                         # AMQ Broker マニフェスト
-│   ├── 00-operator.yaml         # Operator Subscription
-│   ├── 01-namespace.yaml        # Namespace (プレースホルダー)
-│   ├── 02-broker.yaml           # AMQ Broker インスタンス
-│   └── 03-address-example.yaml  # Queue/Address サンプル
-├── kafka/                       # Kafka マニフェスト
-│   ├── 00-operator.yaml         # AMQ Streams Operator
-│   ├── 01-console-operator.yaml # Console Operator
-│   ├── 02-namespace.yaml        # Namespace (プレースホルダー)
-│   ├── 03-kafka-cluster.yaml    # Kafka Cluster + NodePool
-│   ├── 04-topic-example.yaml    # Topic サンプル
-│   └── 05-console.yaml          # Kafka Console
-└── scripts/                     # デプロイスクリプト
-    ├── deploy-amq.sh            # AMQ 自動デプロイ
-    └── deploy-kafka.sh          # Kafka 自動デプロイ
+./deploy-all.sh
 ```
 
 ---
 
-## 🔧 手動デプロイ（マニフェスト直接適用）
+## デプロイ内容
 
-自動スクリプトを使わず、手動でデプロイする場合の手順です。
+### 作成されるNamespace
 
-### AMQ Brokerの手動デプロイ
+| Namespace | 用途 | 主なリソース |
+|-----------|------|-------------|
+| `demo-kafka` | Kafkaクラスター | Kafka, KafkaTopic |
+| `demo-tuxedo-c` | Tuxedo C実装 | Deployment, Service, Route |
+| `demo-camel` | Apache Camel統合 | Deployment |
+| `demo-webui` | WebUI | Deployment, Service, Route |
+
+### デプロイフロー
+
+```
+1. AMQ Streams Operator インストール (3分)
+   └─> openshift-operators namespace
+
+2. Kafka Cluster デプロイ (5分)
+   └─> demo-kafka namespace
+       ├─> Kafka (1 broker)
+       ├─> Zookeeper (1 node)
+       └─> KafkaTopic: demo-messages
+
+3. Tuxedo C ビルド＆デプロイ (7-10分)
+   └─> demo-tuxedo-c namespace
+       ├─> BuildConfig: tuxedo-base (SDKイメージ)
+       ├─> BuildConfig: tuxedo-msgsvc (アプリイメージ)
+       ├─> Deployment: tuxedo-msgsvc
+       ├─> Service: tuxedo-msgsvc:8080
+       └─> Route: https://tuxedo-msgsvc-demo-tuxedo-c.apps...
+
+4. Camel ビルド＆デプロイ (2-3分)
+   └─> demo-camel namespace
+       ├─> BuildConfig: camel-kafka-bridge
+       └─> Deployment: camel-kafka-bridge
+
+5. WebUI ビルド＆デプロイ (2-3分)
+   └─> demo-webui namespace
+       ├─> BuildConfig: webui
+       ├─> Deployment: webui
+       ├─> Service: webui:8080
+       └─> Route: https://webui-demo-webui.apps...
+```
+
+**所要時間**: 約15-20分
+
+---
+
+## 使い方
+
+### デプロイ実行
 
 ```bash
-# 1. Operatorインストール
-oc apply -f amq/00-operator.yaml
-
-# 2. Operatorインストール確認（Succeededになるまで待つ）
-oc get csv -n openshift-operators | grep amq-broker
-
-# 3. Namespace作成（プレースホルダーを置換）
-sed 's/NAMESPACE_PLACEHOLDER/my-amq-namespace/g' amq/01-namespace.yaml | oc apply -f -
-
-# 4. Broker デプロイ
-sed 's/NAMESPACE_PLACEHOLDER/my-amq-namespace/g' amq/02-broker.yaml | oc apply -f -
-
-# 5. Queue作成（オプション）
-sed -e 's/NAMESPACE_PLACEHOLDER/my-amq-namespace/g' \
-    -e 's/EXAMPLE.QUEUE/MY.QUEUE.NAME/g' \
-    amq/03-address-example.yaml | oc apply -f -
-
-# 6. 確認
-oc get pods -n my-amq-namespace
-oc get svc -n my-amq-namespace
+cd /path/to/tuxedo-to-camel/deploy-kit
+./deploy-all.sh
 ```
 
----
+### デプロイ完了後
 
-### Kafkaの手動デプロイ
+スクリプトが完了すると、WebUI URLが表示されます：
+
+```
+🎉 Deployment Complete!
+
+Access the demo at:
+  🌐 WebUI: https://webui-demo-webui.apps.cluster-xxxxx.opentlc.com
+```
+
+### E2Eテスト
+
+1. **WebUIにアクセス**
+   ```bash
+   # URLをブラウザで開く
+   open https://webui-demo-webui.apps.cluster-xxxxx.opentlc.com
+   ```
+
+2. **メッセージ送信**
+   - メッセージ入力欄に任意のテキストを入力
+   - 「Tuxedoへ送信」ボタンをクリック
+   - 成功メッセージを確認
+
+3. **Kafkaでメッセージ確認**
+   ```bash
+   oc run kafka-consumer -n demo-kafka --rm -i --restart=Never \
+     --image=quay.io/strimzi/kafka:latest-kafka-4.1.0 \
+     -- bin/kafka-console-consumer.sh \
+     --bootstrap-server demo-kafka-kafka-bootstrap:9092 \
+     --topic demo-messages \
+     --from-beginning \
+     --max-messages 10
+   ```
+
+### コンポーネントログ確認
 
 ```bash
-# 1. AMQ Streams Operatorインストール
-oc apply -f kafka/00-operator.yaml
-oc apply -f kafka/01-console-operator.yaml
+# Tuxedo C
+oc logs -n demo-tuxedo-c deployment/tuxedo-msgsvc --tail=20
 
-# 2. Operatorインストール確認
-oc get csv -n openshift-operators | grep amq-streams
+# Camel
+oc logs -n demo-camel deployment/camel-kafka-bridge --tail=20
 
-# 3. Namespace作成
-sed 's/NAMESPACE_PLACEHOLDER/my-kafka-namespace/g' kafka/02-namespace.yaml | oc apply -f -
-
-# 4. Kafka Cluster デプロイ
-sed -e 's/NAMESPACE_PLACEHOLDER/my-kafka-namespace/g' \
-    -e 's/KAFKA_CLUSTER_NAME/my-cluster/g' \
-    kafka/03-kafka-cluster.yaml | oc apply -f -
-
-# 5. Kafka Console デプロイ (クラスタドメインを確認して置換)
-CLUSTER_DOMAIN=$(oc whoami --show-console | sed 's|https://console-openshift-console.apps.||' | sed 's|/||')
-sed -e 's/NAMESPACE_PLACEHOLDER/my-kafka-namespace/g' \
-    -e 's/KAFKA_CLUSTER_NAME/my-cluster/g' \
-    -e "s/CONSOLE_HOSTNAME_PLACEHOLDER/kafka-console.apps.$CLUSTER_DOMAIN/g" \
-    kafka/05-console.yaml | oc apply -f -
-
-# 6. Topicサンプル作成（オプション）
-sed -e 's/NAMESPACE_PLACEHOLDER/my-kafka-namespace/g' \
-    -e 's/KAFKA_CLUSTER_NAME/my-cluster/g' \
-    kafka/04-topic-example.yaml | oc apply -f -
-
-# 7. 確認
-oc get kafka -n my-kafka-namespace
-oc get pods -n my-kafka-namespace
-oc get route -n my-kafka-namespace
+# WebUI
+oc logs -n demo-webui deployment/webui --tail=20
 ```
 
 ---
 
-## ✅ デプロイ確認
+## トラブルシューティング
 
-### AMQ Broker
+### ビルドが失敗する
 
+**症状**: BuildConfigが Failed状態
+
+**確認**:
+```bash
+# ビルドログ確認
+oc logs -n demo-tuxedo-c build/tuxedo-base-1
+
+# 再ビルド
+oc start-build tuxedo-base -n demo-tuxedo-c --follow
+```
+
+**原因**:
+- GitHubへのアクセス制限
+- イメージレジストリの容量不足
+- ネットワークタイムアウト
+
+### Podが起動しない
+
+**症状**: Pod が CrashLoopBackOff または ImagePullBackOff
+
+**確認**:
 ```bash
 # Pod状態確認
-oc get pods -n <namespace>
-# 期待結果: amq-broker-ss-0 が Running
+oc get pods -n demo-tuxedo-c
+oc describe pod <pod-name> -n demo-tuxedo-c
 
-# Service確認
-oc get svc -n <namespace>
-# AMQP: amq-broker-amqp-0-svc:5672
-# Core: amq-broker-core-0-svc:61616
-
-# Queue確認（Pod内から）
-oc exec -n <namespace> amq-broker-ss-0 -- \
-  /home/jboss/amq-broker/bin/artemis queue stat --url tcp://localhost:61616
-
-# Console Route (デプロイされている場合)
-oc get route -n <namespace>
+# イベント確認
+oc get events -n demo-tuxedo-c --sort-by='.lastTimestamp'
 ```
 
----
-
-### Kafka
-
+**対処**:
 ```bash
-# Kafka Cluster状態確認
-oc get kafka -n <namespace>
-# 期待結果: STATUS が Ready
+# イメージ再ビルド
+oc start-build tuxedo-msgsvc -n demo-tuxedo-c --follow
 
-# Pod状態確認
-oc get pods -n <namespace>
-# 期待結果:
-#   - <cluster>-<pool>-0: Running (Broker Pod)
-#   - <cluster>-entity-operator-xxx: Running (2/2)
-#   - <cluster>-console-xxx: Running (2/2)
-
-# Topic確認
-oc get kafkatopic -n <namespace>
-
-# Console URL確認
-oc get route -n <namespace> | grep console
-
-# Kafkaログ確認
-oc logs -n <namespace> <cluster>-<pool>-0
+# Deployment再起動
+oc rollout restart deployment/tuxedo-msgsvc -n demo-tuxedo-c
 ```
-
----
-
-## 📝 カスタマイズ
-
-### AMQ Brokerのカスタマイズ
-
-[amq/02-broker.yaml](amq/02-broker.yaml)を編集:
-
-```yaml
-spec:
-  deploymentPlan:
-    size: 3                        # ブローカー数（デフォルト: 1）
-    persistenceEnabled: true       # 永続化（デフォルト: false）
-  acceptors:
-    - name: amqp
-      protocols: amqp
-      port: 5672
-      sslEnabled: true             # TLS有効化（デフォルト: false）
-```
-
----
-
-### Kafkaのカスタマイズ
-
-[kafka/03-kafka-cluster.yaml](kafka/03-kafka-cluster.yaml)を編集:
-
-```yaml
-# KafkaNodePool
-spec:
-  replicas: 3                      # ブローカー数（デフォルト: 1）
-  storage:
-    type: persistent-claim         # 永続化（デフォルト: ephemeral）
-    size: 100Gi
-
-# Kafka
-spec:
-  kafka:
-    config:
-      offsets.topic.replication.factor: 3    # レプリケーション数
-      min.insync.replicas: 2
-```
-
----
-
-## 🧪 動作テスト
-
-### AMQ Brokerテスト
-
-```bash
-# Producer（メッセージ送信）
-oc exec -n <namespace> amq-broker-ss-0 -- \
-  /home/jboss/amq-broker/bin/artemis producer \
-  --destination <queue-name> \
-  --message-count 10 \
-  --message "Test message" \
-  --url tcp://localhost:61616
-
-# Consumer（メッセージ受信）
-oc exec -n <namespace> amq-broker-ss-0 -- \
-  /home/jboss/amq-broker/bin/artemis consumer \
-  --destination <queue-name> \
-  --message-count 10 \
-  --url tcp://localhost:61616
-```
-
----
-
-### Kafkaテスト
-
-```bash
-# Producer（メッセージ送信）
-oc exec -n <namespace> <cluster>-<pool>-0 -- \
-  bin/kafka-console-producer.sh \
-  --bootstrap-server localhost:9092 \
-  --topic <topic-name>
-# （メッセージ入力後、Ctrl+D で終了）
-
-# Consumer（メッセージ受信）
-oc exec -n <namespace> <cluster>-<pool>-0 -- \
-  bin/kafka-console-consumer.sh \
-  --bootstrap-server localhost:9092 \
-  --topic <topic-name> \
-  --from-beginning \
-  --timeout-ms 10000
-```
-
----
-
-## 🗑️ クリーンアップ
-
-### AMQ Broker削除
-
-```bash
-# リソース削除
-oc delete activemqartemis amq-broker -n <namespace>
-oc delete activemqartemisaddress --all -n <namespace>
-oc delete namespace <namespace>
-
-# Operator削除（必要な場合のみ）
-oc delete subscription amq-broker-rhel8 -n openshift-operators
-oc delete csv -n openshift-operators -l operators.coreos.com/amq-broker-rhel8.openshift-operators
-```
-
----
-
-### Kafka削除
-
-```bash
-# リソース削除
-oc delete console --all -n <namespace>
-oc delete kafkatopic --all -n <namespace>
-oc delete kafka --all -n <namespace>
-oc delete kafkanodepool --all -n <namespace>
-oc delete namespace <namespace>
-
-# Operator削除（必要な場合のみ）
-oc delete subscription amq-streams -n openshift-operators
-oc delete subscription amq-streams-console -n openshift-operators
-oc delete csv -n openshift-operators -l operators.coreos.com/amq-streams.openshift-operators
-oc delete csv -n openshift-operators -l operators.coreos.com/amq-streams-console.openshift-operators
-```
-
----
-
-## 📚 参考リソース
-
-### Red Hat 公式ドキュメント
-
-- [AMQ Broker on OpenShift](https://access.redhat.com/documentation/en-us/red_hat_amq_broker/)
-- [AMQ Streams (Kafka) on OpenShift](https://access.redhat.com/documentation/en-us/red_hat_amq_streams/)
-- [OpenShift Container Platform](https://docs.openshift.com/)
-
-### プロジェクトリソース
-
-- **プロジェクトリポジトリ**: [tuxedo-to-camel](https://github.com/kamorisan/tuxedo-to-camel)
-- **進捗ドキュメント**: [PROGRESS_20260604.md](../PROGRESS_20260604.md)
-- **Tuxedoデプロイガイド**: [TUXEDO_DEPLOYMENT_NOTES.md](../TUXEDO_DEPLOYMENT_NOTES.md)
-
----
-
-## ❓ トラブルシューティング
 
 ### Operatorがインストールされない
 
+**症状**: AMQ Streams Operator が Succeeded にならない
+
+**確認**:
 ```bash
-# Subscription状態確認
-oc get subscription -n openshift-operators
+# CSV確認
+oc get csv -n openshift-operators | grep amqstreams
 
-# InstallPlan確認
-oc get installplan -n openshift-operators
-
-# Pod確認（Operatorが起動しているか）
-oc get pods -n openshift-operators | grep amq
+# Subscription確認
+oc get subscription amq-streams -n openshift-operators -o yaml
 ```
 
-**対処法:**
-- Subscription の `installPlanApproval: Manual` になっている場合、手動承認が必要
-- CatalogSource の状態を確認: `oc get catalogsource -n openshift-marketplace`
-
----
-
-### PodがPendingのまま
-
+**対処**:
 ```bash
-# Pod詳細確認
-oc describe pod <pod-name> -n <namespace>
+# 手動でOperator確認
+oc get packagemanifests | grep amq-streams
 
-# Events確認
-oc get events -n <namespace> --sort-by='.lastTimestamp'
+# Subscriptionを削除して再作成
+oc delete subscription amq-streams -n openshift-operators
+# deploy-all.sh を再実行
 ```
 
-**よくある原因:**
-- リソース不足（CPU/Memory）
-- PVC作成失敗（StorageClassが存在しない）
-- ImagePullBackOff（イメージレジストリ認証）
+### WebUIが表示されない
 
----
+**症状**: 404 Not Found または Connection Refused
 
-### Kafka Consoleにアクセスできない
-
+**確認**:
 ```bash
 # Route確認
-oc get route -n <namespace>
+oc get route webui -n demo-webui
 
-# Console Pod確認
-oc get pods -n <namespace> | grep console
-
-# Console ログ確認
-oc logs -n <namespace> <console-pod-name>
+# Pod確認
+oc get pods -n demo-webui
+oc logs -n demo-webui deployment/webui
 ```
 
-**対処法:**
-- Routeのhostnameが正しいか確認
-- Console Operatorが正常にインストールされているか確認
-- Kafkaクラスター名とlistener名が一致しているか確認
+**対処**:
+```bash
+# Health check
+oc exec -n demo-webui deployment/webui -- curl localhost:8080/q/health
+
+# Rollout再起動
+oc rollout restart deployment/webui -n demo-webui
+```
 
 ---
 
-## 📞 サポート
+## クリーンアップ
 
-問題が解決しない場合:
-1. プロジェクトのIssueトラッカーを確認
-2. OpenShiftクラスター管理者に相談
-3. Red Hatサポートに問い合わせ（サブスクリプション契約者）
+### 全リソース削除
+
+```bash
+./cleanup.sh
+```
+
+これにより以下が削除されます：
+- ✅ demo-webui namespace
+- ✅ demo-camel namespace
+- ✅ demo-tuxedo-c namespace
+- ✅ demo-kafka namespace
+- ❓ AMQ Streams Operator (選択可能)
+
+### 手動削除
+
+```bash
+# Namespace個別削除
+oc delete namespace demo-webui
+oc delete namespace demo-camel
+oc delete namespace demo-tuxedo-c
+oc delete namespace demo-kafka
+
+# Operator削除
+oc delete subscription amq-streams -n openshift-operators
+oc delete csv -n openshift-operators -l operators.coreos.com/amq-streams.openshift-operators
+```
 
 ---
 
-**最終更新**: 2026-06-04  
-**バージョン**: 1.0.0  
-**作成者**: Tuxedo-to-Camel Demo Project
+## カスタマイズ
+
+### Kafkaレプリカ数変更
+
+`deploy-all.sh`の`deploy_kafka()`関数内を編集：
+
+```yaml
+spec:
+  kafka:
+    replicas: 3  # 1 → 3 に変更
+```
+
+### 独自イメージレジストリ使用
+
+BuildConfig の `output.to` を変更：
+
+```yaml
+output:
+  to:
+    kind: DockerImage
+    name: quay.io/your-org/tuxedo-msgsvc:latest
+```
+
+### リソース制限追加
+
+Deployment に resources を追加：
+
+```yaml
+resources:
+  limits:
+    cpu: "1"
+    memory: "1Gi"
+  requests:
+    cpu: "500m"
+    memory: "512Mi"
+```
+
+---
+
+## サブディレクトリ
+
+```
+deploy-kit/
+├── deploy-all.sh           # 完全デプロイスクリプト
+├── cleanup.sh              # クリーンアップスクリプト
+├── README.md              # このファイル
+├── tuxedo-q-c/            # Tuxedo C個別デプロイ用
+└── manifests/             # Kubernetesマニフェスト（予備）
+```
+
+---
+
+## サポート
+
+### ドキュメント
+
+- [QUICKSTART_LOCAL.md](../QUICKSTART_LOCAL.md) - ローカル実行ガイド
+- [E2E_TEST_GUIDE.md](../E2E_TEST_GUIDE.md) - E2Eテストガイド
+- [components/tuxedo/README_C_IMPLEMENTATION.md](../components/tuxedo/README_C_IMPLEMENTATION.md) - C実装詳細
+
+### 問題報告
+
+GitHub Issues: https://github.com/kamorisan/tuxedo-to-camel/issues
+
+---
+
+**Last Updated**: 2026-06-04
