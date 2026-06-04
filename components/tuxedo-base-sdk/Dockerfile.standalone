@@ -5,9 +5,19 @@ FROM oraclelinux:8
 
 USER root
 
-# Install EPEL and development tools
-RUN yum -y install oracle-epel-release-el8 && yum clean all
-RUN yum -y install gcc make libmicrohttpd-devel && yum clean all
+# Install development tools
+RUN yum -y install gcc make wget tar gnutls-devel libgcrypt-devel && yum clean all
+
+# Build libmicrohttpd from source
+RUN cd /tmp && \
+    wget https://ftp.gnu.org/gnu/libmicrohttpd/libmicrohttpd-0.9.77.tar.gz && \
+    tar xzf libmicrohttpd-0.9.77.tar.gz && \
+    cd libmicrohttpd-0.9.77 && \
+    ./configure --prefix=/usr && \
+    make && \
+    make install && \
+    cd / && \
+    rm -rf /tmp/libmicrohttpd*
 
 # Create Tuxedo directory structure
 RUN mkdir -p /u01/oracle/tuxHome/tuxedo22.1.1.0.0
