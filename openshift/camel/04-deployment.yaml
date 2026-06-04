@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: camel
-          image: camel-kafka-bridge:latest
+          image: image-registry.openshift-image-registry.svc:5000/demo-camel/camel-kafka-bridge:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

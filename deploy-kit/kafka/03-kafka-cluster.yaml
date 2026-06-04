@@ -1,8 +1,8 @@
 apiVersion: kafka.strimzi.io/v1
 kind: Kafka
 metadata:
-  name: demo-kafka
-  namespace: demo-kafka
+  name: KAFKA_CLUSTER_NAME
+  namespace: NAMESPACE_PLACEHOLDER
 spec:
   kafka:
     version: 4.1.0
@@ -28,10 +28,10 @@ spec:
 apiVersion: kafka.strimzi.io/v1
 kind: KafkaNodePool
 metadata:
-  name: demo-kafka-pool
-  namespace: demo-kafka
+  name: KAFKA_CLUSTER_NAME-pool
+  namespace: NAMESPACE_PLACEHOLDER
   labels:
-    strimzi.io/cluster: demo-kafka
+    strimzi.io/cluster: KAFKA_CLUSTER_NAME
 spec:
   replicas: 1
   roles:

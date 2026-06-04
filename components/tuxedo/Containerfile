@@ -14,8 +14,8 @@ LABEL description="Tuxedo Message Service with AMQ integration"
 
 USER root
 
-# Install Python and curl for mock server
-RUN yum -y install python3 curl && \
+# Install Python, curl, and qpid-proton for mock server with AMQP support
+RUN yum -y install python3 curl python3-qpid-proton && \
     yum clean all && \
     rm -rf /var/cache/yum
 
