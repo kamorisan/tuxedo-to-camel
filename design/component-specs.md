@@ -260,10 +260,10 @@ ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
 Tuxedoシミュレーションサービス。メッセージを受信し、AMQキューへ転送する。
 
 ### 技術スタック
-- **Language**: Python 3.11
-- **Web Framework**: Flask
-- **AMQ Client**: `python-qpid-proton` (AMQP 1.0)
-- **Logging**: Python logging module
+- **Language**: C言語
+- **Tuxedo Framework**: Oracle Tuxedo
+- **AMQ Client**: AMQP C Client Library
+- **Build Tool**: Makefile
 
 ### ディレクトリ構成
 ```

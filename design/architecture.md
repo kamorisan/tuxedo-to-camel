@@ -129,24 +129,26 @@
 ### 4.2 Tuxedo Service (demo-tuxedo)
 
 **技術スタック:**
-- Python 3.11 (Tuxedoシミュレーション)
-- Flask (HTTP API受信)
-- Artemis Python Client (AMQ送信)
+- C言語
+- Oracle Tuxedo フレームワーク
+- AMQP C Client Library (AMQ送信)
 
 **機能:**
-- HTTP APIでメッセージ受信
-- 簡易的なTuxedoサービスロジック（ログ記録）
+- Tuxedoサービスとしてメッセージ受信
+- ビジネスロジック処理（ログ記録）
 - AMQキューへメッセージ送信
 
-**エンドポイント:**
-- `POST /api/receive` - メッセージ受信
+**Tuxedoサービス:**
+- サービス名: `MSGSVC`
+- バッファタイプ: STRING
 
 **AMQ設定:**
 - Queue Name: `TUXEDO.OUT`
-- Protocol: AMQP / CORE
+- Protocol: AMQP
 
 **コンテナイメージ:**
-- ベース: `registry.access.redhat.com/ubi9/python-311`
+- ベース: Oracle Tuxedo Runtime Container
+- または UBI9 + Tuxedo Runtime
 
 ### 4.3 Apache Camel (demo-camel)
 
