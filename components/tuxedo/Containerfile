@@ -20,6 +20,10 @@ RUN yum -y install oracle-epel-release-el8 && \
     yum clean all && \
     rm -rf /var/cache/yum
 
+# Create application directory as root
+RUN mkdir -p /u01/oracle/user_projects/tuxdemo && \
+    chown -R oracle:oracle /u01/oracle/user_projects
+
 # Switch to oracle user
 USER oracle
 
@@ -34,9 +38,6 @@ ENV TUXCONFIG=$APPDIR/tuxconfig
 ENV AMQ_HOST=amq-broker.demo-tuxedo.svc.cluster.local
 ENV AMQ_PORT=5672
 ENV AMQ_QUEUE=TUXEDO.OUT
-
-# Create application directory
-RUN mkdir -p $APPDIR
 
 # Copy source files
 COPY --chown=oracle:oracle src/*.c src/*.h $APPDIR/src/
