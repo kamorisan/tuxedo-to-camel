@@ -1,0 +1,5 @@
+STEP 1/17: FROM oracle/tuxedo:22.1.1.0.0
+Resolving "oracle/tuxedo" using unqualified-search registries (/etc/containers/registries.conf.d/999-podman-machine.conf)
+Trying to pull docker.io/oracle/tuxedo:22.1.1.0.0...
+Error: creating build container: initializing source docker://oracle/tuxedo:22.1.1.0.0: reading manifest 22.1.1.0.0 in docker.io/oracle/tuxedo: requested access to the resource is denied
+

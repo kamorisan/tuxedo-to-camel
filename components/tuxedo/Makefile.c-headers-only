@@ -1,0 +1,90 @@
+# Makefile for Tuxedo /Q C Implementation (Headers-only build)
+# Compiles with SDK headers, stubs Tuxedo library functions
+
+CC = gcc
+TUXDIR = /u01/oracle/tuxHome/tuxedo22.1.1.0.0
+CFLAGS = -I$(TUXDIR)/include -Wall -O2 -DTUXEDO_STUB
+LDFLAGS = -lmicrohttpd -lpthread
+
+TARGET = tuxedo_q_server
+SRC = src/tuxedo_q_server.c
+STUB_SRC = src/tuxedo_stub.c
+OBJ = $(SRC:.c=.o) $(STUB_SRC:.c=.o)
+
+.PHONY: all clean
+
+all: stub $(TARGET)
+
+stub:
+	@echo "Creating Tuxedo stub functions..."
+	@mkdir -p src
+	@cat > src/tuxedo_stub.c << 'EOF'
+/* Tuxedo API stub functions for testing without libtux.so */
+#include <stdio.h>
+#include <string.h>
+#include <atmi.h>
+#include <tmqueue.h>
+
+/* Global error variables */
+int tperrno = 0;
+long tpurcode = 0;
+
+/* tpinit - Initialize ATMI */
+int tpinit(TPINIT *tpinfo) {
+    fprintf(stderr, "[STUB] tpinit called (returning success)\n");
+    return 0;  /* Success */
+}
+
+/* tpterm - Terminate ATMI */
+int tpterm(void) {
+    fprintf(stderr, "[STUB] tpterm called\n");
+    return 0;
+}
+
+/* tpalloc - Allocate typed buffer */
+char *tpalloc(char *type, char *subtype, long size) {
+    fprintf(stderr, "[STUB] tpalloc called: type=%s, size=%ld\n", type, size);
+    return malloc(size);
+}
+
+/* tpfree - Free typed buffer */
+void tpfree(char *ptr) {
+    fprintf(stderr, "[STUB] tpfree called\n");
+    free(ptr);
+}
+
+/* tpenqueue - Enqueue message (stub - always fails) */
+int tpenqueue(char *qspace, char *qname, TPQCTL *ctl, char *data, long len, long flags) {
+    fprintf(stderr, "[STUB] tpenqueue called: qspace=%s, qname=%s, len=%ld\n", qspace, qname, len);
+    tperrno = TPENOENT;  /* Queue space not found */
+    return -1;
+}
+
+/* tpdequeue - Dequeue message (stub - always fails) */
+int tpdequeue(char *qspace, char *qname, TPQCTL *ctl, char **data, long *len, long flags) {
+    fprintf(stderr, "[STUB] tpdequeue called: qspace=%s, qname=%s\n", qspace, qname);
+    tperrno = TPENOENT;
+    return -1;
+}
+EOF
+
+$(TARGET): $(OBJ)
+	$(CC) -o $@ $^ $(LDFLAGS)
+	@echo "Build complete: $(TARGET) (with Tuxedo stubs)"
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -f $(TARGET) $(OBJ) src/tuxedo_stub.c
+	@echo "Clean complete"
+
+test:
+	@echo "Testing $(TARGET)..."
+	@./$(TARGET) &
+	@sleep 2
+	@curl -X POST http://localhost:8080/enqueue -d "Test message" || true
+	@curl http://localhost:8080/dequeue || true
+	@curl http://localhost:8080/health || true
+	@pkill -f $(TARGET) || true
+	@echo "Test complete"

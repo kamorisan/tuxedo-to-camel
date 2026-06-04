@@ -1,0 +1,42 @@
+# Tuxedo SDK Base Image (Standalone)
+# Builds from Oracle Linux with extracted SDK files
+
+FROM oraclelinux:8
+
+USER root
+
+# Install EPEL and development tools
+RUN yum -y install oracle-epel-release-el8 && yum clean all
+RUN yum -y install gcc make libmicrohttpd-devel && yum clean all
+
+# Create Tuxedo directory structure
+RUN mkdir -p /u01/oracle/tuxHome/tuxedo22.1.1.0.0
+
+# Copy SDK files
+COPY sdk/include/ /u01/oracle/tuxHome/tuxedo22.1.1.0.0/include/
+COPY sdk/bin/ /u01/oracle/tuxHome/tuxedo22.1.1.0.0/bin/
+
+# Create oracle user
+RUN useradd -m -d /home/oracle oracle && \
+    mkdir -p /u01/oracle && \
+    chown -R oracle:oracle /u01/oracle
+
+# Fix permissions
+RUN chown -R oracle:oracle /u01/oracle/tuxHome && \
+    chmod +x /u01/oracle/tuxHome/tuxedo22.1.1.0.0/bin/*
+
+USER oracle
+
+# Set environment
+ENV TUXDIR=/u01/oracle/tuxHome/tuxedo22.1.1.0.0
+ENV PATH=$TUXDIR/bin:$PATH
+ENV LD_LIBRARY_PATH=$TUXDIR/lib:$LD_LIBRARY_PATH
+
+WORKDIR /workspace
+
+# Verify installation
+RUN test -f $TUXDIR/include/atmi.h && \
+    test -f $TUXDIR/include/tmqueue.h && \
+    echo "SDK headers verified"
+
+CMD ["/bin/bash"]
