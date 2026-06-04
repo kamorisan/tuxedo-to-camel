@@ -1,0 +1,30 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: camel-kafka-bridge
+  namespace: NAMESPACE_PLACEHOLDER
+  labels:
+    app: camel-kafka-bridge
+    app.kubernetes.io/component: camel
+    app.kubernetes.io/part-of: tuxedo-to-camel-demo
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: 'camel-kafka-bridge:latest'
+  source:
+    type: Git
+    git:
+      uri: 'GIT_REPO_PLACEHOLDER'
+      ref: GIT_BRANCH_PLACEHOLDER
+    contextDir: components/camel
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        name: 'ubi8-openjdk-21:1.18'
+        namespace: openshift
+  triggers:
+    - type: ConfigChange
+    - type: ImageChange
