@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tuxedo-msgsvc
+  namespace: NAMESPACE_PLACEHOLDER
+  labels:
+    app: tuxedo-msgsvc
+    app.kubernetes.io/component: tuxedo
+    app.kubernetes.io/part-of: tuxedo-to-camel-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tuxedo-msgsvc
+  template:
+    metadata:
+      labels:
+        app: tuxedo-msgsvc
+        app.kubernetes.io/component: tuxedo
+    spec:
+      containers:
+        - name: tuxedo
+          image: image-registry.openshift-image-registry.svc:5000/demo-tuxedo/tuxedo-msgsvc:latest
+          imagePullPolicy: Always
+          command: ["/u01/oracle/user_projects/tuxdemo/start-tuxedo-with-q.sh"]
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+              name: wsl
+          env:
+            - name: TUXEDO_QUEUE
+              value: "DEMO_QUEUE"
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+          resources:
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
